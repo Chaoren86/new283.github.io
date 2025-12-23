@@ -1,1 +1,0 @@
-import{X as e,s as a,N as o,a as s,o as n,j as r}from"./index-2i5NzYaS.js";import{_ as t}from"./_plugin-vue_export-helper.BCo6x5W8.js";const d=t({data:()=>({}),onLoad(s){e(),a("agent_code",s.agent_code),o({url:"/pages/index/index"})}},[["render",function(e,a,o,t,d,i){const p=r;return n(),s(p)}]]);export{d as default};

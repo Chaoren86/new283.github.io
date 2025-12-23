@@ -1,1 +1,0 @@
-import{_ as a,X as e,s,N as n,a as o,o as t,j as d}from"./index-BrfRr25j.js";const r=a({data:()=>({}),onLoad(a){e(),s("agent_code",a.agent_code),n({url:"/pages/index/index"})}},[["render",function(a,e,s,n,r,c){const i=d;return t(),o(i)}]]);export{r as default};
