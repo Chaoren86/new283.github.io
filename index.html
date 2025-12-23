@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="第三方网站嵌入展示">
     <title>网站展示</title>
     <style>
         * {
@@ -11,67 +13,54 @@
             box-sizing: border-box;
         }
         
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+        }
+        
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 10px;
         }
         
         .container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1400px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 20px);
+            max-height: 100vh;
         }
         
         .header {
             background: #2c3e50;
             color: white;
-            padding: 20px;
+            padding: 15px 20px;
             text-align: center;
+            flex-shrink: 0;
         }
         
         .header h1 {
-            font-size: 24px;
+            font-size: clamp(18px, 4vw, 24px);
             margin-bottom: 5px;
+            word-break: break-word;
         }
         
-        .iframe-container {
-            position: relative;
-            width: 100%;
-            height: 80vh;
-            min-height: 600px;
-        }
-        
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 18px;
-            color: #666;
-        }
-        
-        .footer {
-            text-align: center;
-            padding: 15px;
-            background: #f8f9fa;
-            border-top: 1px solid #eee;
-            color: #666;
+        .header p {
+            font-size: clamp(12px, 2.5vw, 14px);
+            opacity: 0.9;
+            word-break: break-all;
         }
         
         .notice {
@@ -79,9 +68,164 @@
             border: 1px solid #ffeaa7;
             border-radius: 5px;
             padding: 10px 15px;
-            margin: 20px auto;
-            max-width: 800px;
+            margin: 15px;
             text-align: center;
+            font-size: clamp(12px, 2.5vw, 14px);
+            flex-shrink: 0;
+        }
+        
+        .iframe-wrapper {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #f5f5f5;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+            background: white;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .error-message {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .error-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .error-link:hover {
+            background: #5568d3;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: clamp(11px, 2vw, 13px);
+            flex-shrink: 0;
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                border-radius: 10px;
+                height: calc(100vh - 10px);
+            }
+            
+            .header {
+                padding: 12px 15px;
+            }
+            
+            .notice {
+                margin: 10px;
+                padding: 8px 12px;
+            }
+            
+            .loading {
+                padding: 15px 20px;
+                width: 90%;
+                max-width: 300px;
+            }
+        }
+        
+        /* 超小屏幕优化 */
+        @media (max-width: 480px) {
+            .loading-text {
+                font-size: 14px;
+            }
+        }
+        
+        /* 横屏模式优化 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .header {
+                padding: 8px 15px;
+            }
+            
+            .header h1 {
+                font-size: 16px;
+                margin-bottom: 2px;
+            }
+            
+            .header p {
+                font-size: 11px;
+            }
+            
+            .notice {
+                margin: 8px;
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            
+            .footer {
+                padding: 8px;
+                font-size: 11px;
+            }
+        }
+        
+        /* 隐藏加载动画 */
+        .loading.hidden {
+            display: none;
         }
     </style>
 </head>
@@ -96,15 +240,23 @@
             注意：本页面通过iframe嵌入第三方网站。如果遇到访问问题，可能是目标网站的限制。
         </div>
         
-        <div class="iframe-container">
-            <div class="loading" id="loading">正在加载网站...</div>
-            <iframe 
-                src="https://test.28pc.cyou" 
-                id="mainFrame"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-                loading="eager">
-            </iframe>
+        <div class="iframe-wrapper">
+            <div class="iframe-container">
+                <div class="loading" id="loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">正在加载网站...</div>
+                </div>
+                <iframe 
+                    src="https://test.28pc.cyou" 
+                    id="mainFrame"
+                    title="第三方网站内容"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                    referrerpolicy="no-referrer-when-downgrade"
+                    loading="lazy">
+                    <p>您的浏览器不支持iframe。请<a href="https://test.28pc.cyou" target="_blank" rel="noopener noreferrer">点击这里</a>在新窗口中打开。</p>
+                </iframe>
+            </div>
         </div>
         
         <div class="footer">
@@ -113,22 +265,126 @@
     </div>
 
     <script>
-        // 显示当前日期
-        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN');
-        
-        // 隐藏加载提示
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                document.getElementById('loading').style.display = 'none';
-            }, 2000);
-        });
-        
-        // 处理iframe加载错误
-        document.getElementById('mainFrame').addEventListener('error', function() {
-            document.getElementById('loading').innerHTML = 
-                '加载失败，可能是目标网站不允许嵌入。<br>' +
-                '<a href="https://test.28pc.cyou" target="_blank">点击这里在新窗口中打开</a>';
-        });
+        (function() {
+            'use strict';
+            
+            // 显示当前日期
+            const dateElement = document.getElementById('currentDate');
+            if (dateElement) {
+                dateElement.textContent = new Date().toLocaleDateString('zh-CN');
+            }
+            
+            const iframe = document.getElementById('mainFrame');
+            const loading = document.getElementById('loading');
+            let loadTimeout;
+            let hasLoaded = false;
+            let errorDetected = false;
+            
+            // 检测iframe是否成功加载
+            function checkIframeLoad() {
+                try {
+                    // 尝试访问iframe内容（可能因跨域失败，这是正常的）
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && iframeDoc.readyState === 'complete') {
+                        hideLoading();
+                        hasLoaded = true;
+                    }
+                } catch (e) {
+                    // 跨域访问被阻止是正常的，不代表加载失败
+                    // 如果iframe已经加载了一段时间，认为加载成功
+                    if (!errorDetected) {
+                        // 延迟隐藏加载提示，给iframe更多时间
+                        setTimeout(hideLoading, 1500);
+                    }
+                }
+            }
+            
+            // 隐藏加载提示
+            function hideLoading() {
+                if (loading && !hasLoaded) {
+                    loading.classList.add('hidden');
+                    hasLoaded = true;
+                    if (loadTimeout) {
+                        clearTimeout(loadTimeout);
+                    }
+                }
+            }
+            
+            // 显示错误信息
+            function showError(message) {
+                errorDetected = true;
+                if (loading) {
+                    loading.innerHTML = 
+                        '<div class="error-message">' + message + '</div>' +
+                        '<a href="https://test.28pc.cyou" target="_blank" rel="noopener noreferrer" class="error-link">点击这里在新窗口中打开</a>';
+                    loading.classList.remove('hidden');
+                }
+            }
+            
+            // iframe加载事件处理
+            if (iframe) {
+                // 监听iframe加载完成
+                iframe.addEventListener('load', function() {
+                    setTimeout(hideLoading, 500);
+                });
+                
+                // 监听iframe加载错误
+                iframe.addEventListener('error', function() {
+                    showError('加载失败，可能是目标网站不允许嵌入或网络连接问题。');
+                });
+                
+                // 备用检测：如果5秒后还没加载完成，隐藏加载提示
+                loadTimeout = setTimeout(function() {
+                    if (!hasLoaded) {
+                        hideLoading();
+                    }
+                }, 5000);
+                
+                // 定期检查iframe状态
+                const checkInterval = setInterval(function() {
+                    if (hasLoaded) {
+                        clearInterval(checkInterval);
+                    } else {
+                        checkIframeLoad();
+                    }
+                }, 500);
+                
+                // 10秒后停止检查
+                setTimeout(function() {
+                    clearInterval(checkInterval);
+                    if (!hasLoaded) {
+                        hideLoading();
+                    }
+                }, 10000);
+            }
+            
+            // 处理页面可见性变化
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden && iframe && !hasLoaded) {
+                    checkIframeLoad();
+                }
+            });
+            
+            // 处理窗口大小变化，确保iframe正确显示
+            let resizeTimer;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(function() {
+                    if (iframe) {
+                        // 触发iframe重新计算尺寸
+                        iframe.style.height = iframe.offsetHeight + 'px';
+                        setTimeout(function() {
+                            iframe.style.height = '100%';
+                        }, 10);
+                    }
+                }, 250);
+            });
+            
+            // 检测是否支持iframe
+            if (!iframe) {
+                showError('浏览器不支持iframe功能。');
+            }
+        })();
     </script>
 </body>
 </html>
