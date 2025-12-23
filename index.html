@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="description" content="第三方网站嵌入展示">
-    <title>网站展示</title>
+    <title></title>
     <style>
         * {
             margin: 0;
@@ -21,25 +20,25 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Microsoft YaHei", sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: white;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            padding: 0;
         }
         
         .container {
             width: 100%;
-            max-width: 1400px;
+            max-width: 100%;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            border-radius: 0;
+            box-shadow: none;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 20px);
+            height: 100vh;
             max-height: 100vh;
         }
         
@@ -165,21 +164,12 @@
         /* 移动端优化 */
         @media (max-width: 768px) {
             body {
-                padding: 5px;
+                padding: 0;
             }
             
             .container {
-                border-radius: 10px;
-                height: calc(100vh - 10px);
-            }
-            
-            .header {
-                padding: 12px 15px;
-            }
-            
-            .notice {
-                margin: 10px;
-                padding: 8px 12px;
+                border-radius: 0;
+                height: 100vh;
             }
             
             .loading {
@@ -198,29 +188,7 @@
         
         /* 横屏模式优化 */
         @media (orientation: landscape) and (max-height: 500px) {
-            .header {
-                padding: 8px 15px;
-            }
-            
-            .header h1 {
-                font-size: 16px;
-                margin-bottom: 2px;
-            }
-            
-            .header p {
-                font-size: 11px;
-            }
-            
-            .notice {
-                margin: 8px;
-                padding: 6px 10px;
-                font-size: 11px;
-            }
-            
-            .footer {
-                padding: 8px;
-                font-size: 11px;
-            }
+            /* 横屏模式特定样式 */
         }
         
         /* 隐藏加载动画 */
@@ -231,15 +199,6 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>网站展示</h1>
-            <p>当前访问：https://test.28pc.cyou</p>
-        </div>
-        
-        <div class="notice">
-            注意：本页面通过iframe嵌入第三方网站。如果遇到访问问题，可能是目标网站的限制。
-        </div>
-        
         <div class="iframe-wrapper">
             <div class="iframe-container">
                 <div class="loading" id="loading">
@@ -258,21 +217,11 @@
                 </iframe>
             </div>
         </div>
-        
-        <div class="footer">
-            <p>托管于 GitHub Pages | 最后更新: <span id="currentDate"></span></p>
-        </div>
     </div>
 
     <script>
         (function() {
             'use strict';
-            
-            // 显示当前日期
-            const dateElement = document.getElementById('currentDate');
-            if (dateElement) {
-                dateElement.textContent = new Date().toLocaleDateString('zh-CN');
-            }
             
             const iframe = document.getElementById('mainFrame');
             const loading = document.getElementById('loading');
