@@ -151,6 +151,55 @@
             background: #5568d3;
         }
         
+        .mixed-content-warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px;
+            text-align: center;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .mixed-content-warning h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .mixed-content-warning p {
+            color: #856404;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+        
+        .mixed-content-warning .solution {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            text-align: left;
+        }
+        
+        .mixed-content-warning .solution strong {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .mixed-content-warning .solution ul {
+            margin: 10px 0;
+            padding-left: 20px;
+            color: #666;
+        }
+        
+        .mixed-content-warning .solution li {
+            margin: 5px 0;
+        }
+        
         .footer {
             text-align: center;
             padding: 12px;
@@ -177,6 +226,24 @@
                 width: 90%;
                 max-width: 300px;
             }
+            
+            .mixed-content-warning {
+                margin: 15px;
+                padding: 15px;
+            }
+            
+            .mixed-content-warning h3 {
+                font-size: 16px;
+            }
+            
+            .mixed-content-warning p {
+                font-size: 13px;
+            }
+            
+            .mixed-content-warning .solution {
+                padding: 12px;
+                font-size: 12px;
+            }
         }
         
         /* 超小屏幕优化 */
@@ -199,7 +266,20 @@
 </head>
 <body>
     <div class="container">
-        <div class="iframe-wrapper">
+        <div id="mixedContentWarning" class="mixed-content-warning" style="display: none;">
+            <h3>⚠️ 混合内容安全限制</h3>
+            <p>由于浏览器安全策略，HTTPS 页面无法嵌入 HTTP 内容。</p>
+            <div class="solution">
+                <strong>解决方案：</strong>
+                <ul>
+                    <li>点击下方按钮在新窗口中打开网站（推荐）</li>
+                    <li>或者将页面部署到 HTTP 环境（非 GitHub Pages）</li>
+                    <li>或者为目标服务器配置 HTTPS 证书</li>
+                </ul>
+            </div>
+            <a href="http://47.243.28.208:1188" target="_blank" rel="noopener noreferrer" class="error-link" style="margin-top: 15px;">在新窗口中打开网站</a>
+        </div>
+        <div class="iframe-wrapper" id="iframeWrapper">
             <div class="iframe-container">
                 <div class="loading" id="loading">
                     <div class="loading-spinner"></div>
@@ -226,6 +306,8 @@
             
             const iframe = document.getElementById('mainFrame');
             const loading = document.getElementById('loading');
+            const iframeWrapper = document.getElementById('iframeWrapper');
+            const mixedContentWarning = document.getElementById('mixedContentWarning');
             let loadTimeout;
             let hasLoaded = false;
             let errorDetected = false;
@@ -234,10 +316,24 @@
             
             // 检测混合内容问题
             function checkMixedContent() {
-                if (window.location.protocol === 'https:' && iframe.src.startsWith('http:')) {
-                    return '检测到混合内容问题：当前页面使用 HTTPS，但 iframe 源使用 HTTP。某些浏览器会阻止此内容。';
+                if (window.location.protocol === 'https:' && iframe && iframe.src.startsWith('http:')) {
+                    return true;
                 }
-                return null;
+                return false;
+            }
+            
+            // 显示混合内容警告
+            function showMixedContentWarning() {
+                if (mixedContentWarning) {
+                    mixedContentWarning.style.display = 'block';
+                }
+                if (iframeWrapper) {
+                    iframeWrapper.style.display = 'none';
+                }
+                if (loading) {
+                    loading.classList.add('hidden');
+                }
+                errorDetected = true;
             }
             
             // 检测iframe是否成功加载
@@ -308,10 +404,13 @@
             
             // iframe加载事件处理
             if (iframe) {
-                // 检查混合内容问题
-                const mixedContentWarning = checkMixedContent();
-                if (mixedContentWarning) {
-                    console.warn(mixedContentWarning);
+                // 立即检查混合内容问题
+                const hasMixedContent = checkMixedContent();
+                if (hasMixedContent) {
+                    console.warn('检测到混合内容问题：HTTPS页面无法嵌入HTTP内容');
+                    // 立即显示警告，不等待iframe加载
+                    showMixedContentWarning();
+                    return; // 提前返回，不继续执行后续代码
                 }
                 
                 // 监听iframe加载完成
@@ -328,24 +427,31 @@
                 // 监听iframe加载错误
                 iframe.addEventListener('error', function(e) {
                     console.error('iframe error 事件触发', e);
+                    // 再次检查是否是混合内容问题
+                    if (checkMixedContent()) {
+                        showMixedContentWarning();
+                        return;
+                    }
+                    
                     let errorMsg = '加载失败，可能的原因：';
                     let details = '';
-                    
-                    if (mixedContentWarning) {
-                        errorMsg += '<br>• 混合内容被阻止（HTTPS页面嵌入HTTP内容）';
-                        details += '建议：将页面部署到HTTP环境，或使用HTTPS的iframe源。';
-                    } else {
-                        errorMsg += '<br>• 目标网站不允许嵌入（X-Frame-Options限制）';
-                        errorMsg += '<br>• 网络连接问题';
-                        errorMsg += '<br>• 服务器未响应';
-                        details += '提示：请检查目标URL是否可访问，或尝试在新窗口中打开。';
-                    }
+                    errorMsg += '<br>• 目标网站不允许嵌入（X-Frame-Options限制）';
+                    errorMsg += '<br>• 网络连接问题';
+                    errorMsg += '<br>• 服务器未响应';
+                    details += '提示：请检查目标URL是否可访问，或尝试在新窗口中打开。';
                     
                     showError(errorMsg, details);
                 });
                 
                 // 使用多种方式检测加载状态
                 let loadCheckInterval = setInterval(function() {
+                    // 如果检测到混合内容，停止检查
+                    if (checkMixedContent() && !errorDetected) {
+                        clearInterval(loadCheckInterval);
+                        showMixedContentWarning();
+                        return;
+                    }
+                    
                     if (hasLoaded) {
                         clearInterval(loadCheckInterval);
                         return;
@@ -355,7 +461,12 @@
                         clearInterval(loadCheckInterval);
                     } else if (checkCount >= maxChecks) {
                         clearInterval(loadCheckInterval);
-                        // 如果检查了足够多次还没成功，尝试测试URL可访问性
+                        // 如果检查了足够多次还没成功，再次检查混合内容
+                        if (checkMixedContent()) {
+                            showMixedContentWarning();
+                            return;
+                        }
+                        // 尝试测试URL可访问性
                         testUrlAccessibility().then(function(accessible) {
                             if (accessible === false) {
                                 showError('无法连接到目标服务器。', '请检查网络连接或URL是否正确。');
