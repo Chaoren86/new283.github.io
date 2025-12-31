@@ -886,7 +886,7 @@
                     <li>或者为目标服务器配置 HTTPS 证书</li>
                 </ul>
             </div>
-            <a href="https://47.86.109.240:1188" target="_blank" rel="noopener noreferrer" class="error-link" id="mixedContentLink" style="margin-top: 15px;">在新窗口中打开网站</a>
+            <a href="https://47.83.186.113:1188" target="_blank" rel="noopener noreferrer" class="error-link" id="mixedContentLink" style="margin-top: 15px;">在新窗口中打开网站</a>
         </div>
         <div class="iframe-wrapper" id="iframeWrapper">
             <div class="iframe-container">
@@ -904,7 +904,7 @@
                     loading="eager"
                     scrolling="yes"
                     style="overflow: auto; -webkit-overflow-scrolling: touch;">
-                    <p>您的浏览器不支持iframe。请<a href="https://47.86.109.240:1188" target="_blank" rel="noopener noreferrer" id="fallbackLink">点击这里</a>在新窗口中打开。</p>
+                    <p>您的浏览器不支持iframe。请<a href="https://47.83.186.113:1188" target="_blank" rel="noopener noreferrer" id="fallbackLink">点击这里</a>在新窗口中打开。</p>
                 </iframe>
             </div>
         </div>
@@ -1141,7 +1141,7 @@
             const maxChecks = 20; // 最多检查20次（10秒）
             
             // iframe基础URL
-            const iframeBaseUrl = 'https://47.86.109.240:1188';
+            const iframeBaseUrl = 'https://47.83.186.113:1188';
             
             // 获取当前页面的hash参数
             function getCurrentHash() {
@@ -1295,7 +1295,7 @@
                         resolve(false);
                     };
                     // 尝试加载目标URL的favicon或根路径
-                    testImg.src = 'https://47.86.109.240:1188/favicon.ico?' + Date.now();
+                    testImg.src = 'https://47.83.186.113:1188/favicon.ico?' + Date.now();
                     setTimeout(function() {
                         resolve(null); // 超时返回null
                     }, 3000);
