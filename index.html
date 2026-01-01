@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <!-- 微信和移动端优化 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -164,9 +164,12 @@
             min-height: 0;
             width: 100%;
             height: 100%;
-            overflow: visible;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
+            /* 确保点击位置准确 */
+            transform: none;
+            will-change: auto;
         }
         
         /* 重新选择线路按钮 */
@@ -223,8 +226,13 @@
             overflow: hidden;
             /* 确保点击位置准确 */
             touch-action: pan-x pan-y;
-            /* 确保容器定位准确 */
+            /* 确保容器定位准确，不影响点击 */
             transform: none;
+            will-change: auto;
+            /* 确保容器尺寸准确 */
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
         
         iframe {
@@ -237,7 +245,7 @@
             overflow: auto;
             /* 确保 iframe 内容可以完整显示 */
             -webkit-overflow-scrolling: touch;
-            /* 微信浏览器优化 */
+            /* 微信浏览器优化 - 使用absolute定位确保点击位置准确 */
             position: absolute;
             top: 0;
             left: 0;
@@ -248,9 +256,19 @@
             /* 确保点击位置准确 */
             pointer-events: auto;
             touch-action: auto;
-            /* 移除可能影响点击的变换 */
+            /* 移除可能影响点击的变换和缩放 */
             transform: none;
             will-change: auto;
+            /* 确保iframe尺寸准确 */
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            /* 确保没有缩放 */
+            zoom: 1;
+            -webkit-transform: none;
+            -moz-transform: none;
+            -ms-transform: none;
+            -o-transform: none;
         }
         
         .loading {
@@ -2484,6 +2502,15 @@
                     iframe.style.height = availableHeight + 'px';
                     iframe.style.minHeight = availableHeight + 'px';
                     iframe.style.maxHeight = 'none'; // 允许内容超出时滚动
+                    iframe.style.width = '100%';
+                    
+                    // 确保iframe定位准确，使用absolute定位（所有设备）
+                    iframe.style.position = 'absolute';
+                    iframe.style.top = '0';
+                    iframe.style.left = '0';
+                    iframe.style.right = '0';
+                    iframe.style.bottom = '0';
+                    iframe.style.display = 'block';
                     
                     // 确保滚动相关样式不被覆盖
                     iframe.style.overflow = 'auto';
@@ -2491,39 +2518,43 @@
                     iframe.style.overflowY = 'auto';
                     iframe.style.webkitOverflowScrolling = 'touch';
                     
-                    // 微信和iOS特殊处理：确保可以滚动和点击位置准确
-                    if (isWeChat || isIOS) {
-                        // 确保iframe定位准确，使用absolute定位
-                        iframe.style.position = 'absolute';
-                        iframe.style.top = '0';
-                        iframe.style.left = '0';
-                        iframe.style.right = '0';
-                        iframe.style.bottom = '0';
-                        iframe.style.width = '100%';
-                        iframe.style.height = '100%';
-                        iframe.style.display = 'block';
-                        // 确保点击位置准确
-                        iframe.style.pointerEvents = 'auto';
-                        iframe.style.touchAction = 'auto';
-                        iframe.style.transform = 'none';
-                        iframe.style.willChange = 'auto';
-                        // 确保iframe容器可以滚动
-                        iframeWrapper.style.overflow = 'hidden';
-                        const iframeContainer = document.querySelector('.iframe-container');
-                        if (iframeContainer) {
-                            iframeContainer.style.overflow = 'hidden';
-                            iframeContainer.style.height = availableHeight + 'px';
-                            iframeContainer.style.minHeight = availableHeight + 'px';
-                            iframeContainer.style.maxHeight = availableHeight + 'px';
-                            iframeContainer.style.position = 'relative';
-                            iframeContainer.style.width = '100%';
-                            iframeContainer.style.transform = 'none';
-                        }
-                    }
-                    
-                    // 所有设备都确保点击位置准确
+                    // 确保点击位置准确 - 移除所有可能影响定位的样式
+                    iframe.style.pointerEvents = 'auto';
+                    iframe.style.touchAction = 'auto';
                     iframe.style.transform = 'none';
                     iframe.style.willChange = 'auto';
+                    iframe.style.zoom = '1';
+                    iframe.style.webkitTransform = 'none';
+                    iframe.style.mozTransform = 'none';
+                    iframe.style.msTransform = 'none';
+                    iframe.style.oTransform = 'none';
+                    iframe.style.margin = '0';
+                    iframe.style.padding = '0';
+                    
+                    // 确保iframe容器定位准确
+                    iframeWrapper.style.overflow = 'hidden';
+                    iframeWrapper.style.transform = 'none';
+                    iframeWrapper.style.willChange = 'auto';
+                    
+                    const iframeContainer = document.querySelector('.iframe-container');
+                    if (iframeContainer) {
+                        iframeContainer.style.overflow = 'hidden';
+                        iframeContainer.style.height = availableHeight + 'px';
+                        iframeContainer.style.minHeight = availableHeight + 'px';
+                        iframeContainer.style.maxHeight = availableHeight + 'px';
+                        iframeContainer.style.position = 'relative';
+                        iframeContainer.style.width = '100%';
+                        iframeContainer.style.transform = 'none';
+                        iframeContainer.style.willChange = 'auto';
+                        iframeContainer.style.margin = '0';
+                        iframeContainer.style.padding = '0';
+                    }
+                    
+                    // 微信和iOS特殊处理：确保可以滚动
+                    if (isWeChat || isIOS) {
+                        // 额外的iOS/微信优化
+                        iframe.style.webkitOverflowScrolling = 'touch';
+                    }
                     
                     // 确保容器也使用正确的高度
                     const container = document.querySelector('.container');
@@ -2533,11 +2564,19 @@
                         container.style.minHeight = availableHeight + 'px';
                     }
                     
-                    // 强制重绘（微信浏览器可能需要）
-                    if (isWeChat) {
-                        iframe.style.display = 'none';
-                        iframe.offsetHeight; // 触发重排
-                        iframe.style.display = 'block';
+                    // 强制重绘和重新计算布局（确保点击位置准确）
+                    if (isWeChat || isIOS) {
+                        // 触发重排，确保布局准确
+                        void iframe.offsetHeight;
+                        void iframeContainer?.offsetHeight;
+                        void iframeWrapper.offsetHeight;
+                        
+                        // 确保iframe的尺寸和位置完全匹配容器
+                        const containerRect = iframeContainer?.getBoundingClientRect();
+                        if (containerRect) {
+                            iframe.style.width = containerRect.width + 'px';
+                            iframe.style.height = containerRect.height + 'px';
+                        }
                     }
                 }
             }
