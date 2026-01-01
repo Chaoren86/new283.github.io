@@ -125,6 +125,9 @@
             max-height: 100dvh;
             position: relative;
             overflow: hidden;
+            /* 防止键盘弹起时容器滚动 */
+            overscroll-behavior: none;
+            touch-action: pan-y;
         }
         
         .header {
@@ -2590,10 +2593,15 @@
             // 更新iframe高度
             function updateIframeHeight() {
                 if (iframe && iframeWrapper) {
-                    const availableHeight = getAvailableHeight();
+                    let availableHeight = getAvailableHeight();
                     const isWeChat = /micromessenger/i.test(navigator.userAgent);
                     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                    
+                    // 如果键盘弹起，使用visualViewport的高度
+                    if (window.keyboardVisible && window.visualViewport && window.visualViewport.height) {
+                        availableHeight = window.visualViewport.height;
+                    }
                     
                     // 确保iframe使用完整的可用高度
                     iframeWrapper.style.height = availableHeight + 'px';
@@ -2697,16 +2705,80 @@
                 }, 100);
             });
             
-            // 监听视觉视口变化（移动端浏览器工具栏显示/隐藏时）
+            // 监听视觉视口变化（移动端浏览器工具栏显示/隐藏时，以及键盘弹起/收起）
+            let lastVisualViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            let keyboardVisible = false;
+            
+            // 将keyboardVisible暴露到全局作用域，以便updateIframeHeight可以访问
+            window.keyboardVisible = false;
+            
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', function() {
+                    const currentHeight = window.visualViewport.height;
+                    const heightDiff = lastVisualViewportHeight - currentHeight;
+                    
+                    // 检测键盘是否弹起（高度明显减小，通常减少超过150px）
+                    if (heightDiff > 150) {
+                        keyboardVisible = true;
+                        window.keyboardVisible = true;
+                        // 键盘弹起时，使用当前可视高度，并防止页面滚动
+                        handleKeyboardShow();
+                    } else if (heightDiff < -50) {
+                        // 键盘收起时
+                        keyboardVisible = false;
+                        window.keyboardVisible = false;
+                        handleKeyboardHide();
+                    }
+                    
+                    lastVisualViewportHeight = currentHeight;
                     updateIframeHeight();
                     // 防止输入框聚焦时自动缩放
                     preventAutoZoom();
                 });
+                
                 window.visualViewport.addEventListener('scroll', function() {
+                    // 防止键盘弹起时的自动滚动
+                    if (keyboardVisible) {
+                        window.visualViewport.scrollTop = 0;
+                        window.scrollTo(0, 0);
+                    }
                     updateIframeHeight();
                 });
+            }
+            
+            // 处理键盘弹起
+            function handleKeyboardShow() {
+                // 防止页面滚动
+                document.body.style.position = 'fixed';
+                document.body.style.top = '0';
+                document.body.style.left = '0';
+                document.body.style.right = '0';
+                document.body.style.bottom = '0';
+                document.body.style.overflow = 'hidden';
+                
+                // 立即更新iframe高度
+                updateIframeHeight();
+                
+                // 防止自动滚动
+                if (window.visualViewport) {
+                    window.visualViewport.scrollTop = 0;
+                }
+                window.scrollTo(0, 0);
+            }
+            
+            // 处理键盘收起
+            function handleKeyboardHide() {
+                // 恢复页面样式
+                document.body.style.position = '';
+                document.body.style.top = '';
+                document.body.style.left = '';
+                document.body.style.right = '';
+                document.body.style.bottom = '';
+                document.body.style.overflow = '';
+                
+                // 更新iframe高度
+                setTimeout(updateIframeHeight, 100);
+                setTimeout(updateIframeHeight, 300);
             }
             
             // 防止输入框聚焦时页面自动缩放（iOS Safari问题）
@@ -3239,6 +3311,9 @@
                 
                 // 点击按钮展开/折叠或执行切换线路
                 routeChangeBtn.addEventListener('click', function(e) {
+                    // 阻止事件冒泡，避免触发document的点击事件导致立即折叠
+                    e.stopPropagation();
+                    
                     // 如果正在拖动，不执行点击事件
                     if (isDragging) {
                         e.preventDefault();
@@ -3275,17 +3350,24 @@
                 document.addEventListener('touchmove', drag, { passive: false });
                 document.addEventListener('touchend', endDrag);
                 
-                // 点击页面其他地方时折叠按钮（可选）
-                document.addEventListener('click', function(e) {
+                // 点击页面其他地方时折叠按钮
+                function handleDocumentClick(e) {
+                    // 如果按钮是展开状态，且点击的不是按钮本身
                     if (isExpanded && !routeChangeBtn.contains(e.target)) {
-                        // 延迟折叠，避免与按钮点击冲突
-                        setTimeout(function() {
-                            if (isExpanded && !routeChangeBtn.contains(e.target)) {
-                                collapseButton();
-                            }
-                        }, 200);
+                        // 立即折叠，不需要延迟
+                        collapseButton();
                     }
-                });
+                }
+                
+                // 使用捕获阶段，确保能捕获到所有点击事件
+                document.addEventListener('click', handleDocumentClick, true);
+                
+                // 也监听触摸事件（移动端）
+                document.addEventListener('touchend', function(e) {
+                    if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                        collapseButton();
+                    }
+                }, true);
             }
             
             if (routeRefreshBtn) {
