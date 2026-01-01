@@ -1189,6 +1189,38 @@
             <p style="color:#999;font-size:14px;margin-top:20px;">请启用浏览器的JavaScript功能后刷新页面。</p>
         </div>
     </div>
+    <!-- 安全检测页面 -->
+    <div id="securityCheck" class="security-check">
+        <div class="security-check-content" id="securityCheckContent">
+            <div class="security-icon">🔒</div>
+            <h2>安全检测中</h2>
+            <div class="subtitle" id="checkSubtitle">正在验证访问环境...</div>
+            
+            <div class="check-steps">
+                <div class="check-step" id="step1">
+                    <div class="step-icon">1</div>
+                    <div class="step-text">检测浏览器环境</div>
+                </div>
+                <div class="check-step" id="step2">
+                    <div class="step-icon">2</div>
+                    <div class="step-text">验证安全连接</div>
+                </div>
+                <div class="check-step" id="step3">
+                    <div class="step-icon">3</div>
+                    <div class="step-text">检查访问权限</div>
+                </div>
+                <div class="check-step" id="step4">
+                    <div class="step-icon">4</div>
+                    <div class="step-text">完成安全验证</div>
+                </div>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 线路选择界面 -->
     <div id="routeSelector" class="route-selector hidden">
         <button class="route-refresh-btn" id="routeRefreshBtn" title="重新检测延迟">
@@ -1280,6 +1312,13 @@
                             }
                         }, 0);
                     }
+                }
+                // 确保安全检测页面立即可见
+                const securityCheck = document.getElementById('securityCheck');
+                if (securityCheck) {
+                    securityCheck.style.display = 'flex';
+                    securityCheck.style.visibility = 'visible';
+                    securityCheck.style.opacity = '1';
                 }
                 // 强制触发一次重绘
                 if (window.requestAnimationFrame) {
@@ -1459,6 +1498,7 @@
             const loading = document.getElementById('loading');
             const iframeWrapper = document.getElementById('iframeWrapper');
             const mixedContentWarning = document.getElementById('mixedContentWarning');
+            const securityCheck = document.getElementById('securityCheck');
             const routeSelector = document.getElementById('routeSelector');
             const routeList = document.getElementById('routeList');
             const routeRefreshBtn = document.getElementById('routeRefreshBtn');
@@ -2294,7 +2334,247 @@
                 initializeLinks();
             }
             
-            // 页面初始化：直接显示线路选择界面（已移除安全检测页面）
+            // 安全检测动画
+            function startSecurityCheck() {
+                const securityCheckContent = document.getElementById('securityCheckContent');
+                const checkSubtitle = document.getElementById('checkSubtitle');
+                const progressFill = document.getElementById('progressFill');
+                
+                // 确保必要的DOM元素存在
+                if (!securityCheckContent) {
+                    console.warn('安全检测内容元素未找到，延迟重试');
+                    setTimeout(startSecurityCheck, 200);
+                    return;
+                }
+                
+                // 检测是否为iOS设备
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                
+                // iOS设备使用更短的延迟时间
+                const baseDelay = isIOS ? 200 : 300;
+                const steps = [
+                    { id: 'step1', text: '检测浏览器环境', delay: baseDelay },
+                    { id: 'step2', text: '验证安全连接', delay: baseDelay * 2 },
+                    { id: 'step3', text: '检查访问权限', delay: baseDelay * 3 },
+                    { id: 'step4', text: '完成安全验证', delay: baseDelay * 4 }
+                ];
+                
+                let currentStep = 0;
+                let isCompleted = false;
+                let stepTimeouts = [];
+                let startTime = Date.now();
+                
+                // 强制完成函数（超时保护）
+                function forceComplete() {
+                    if (isCompleted) return;
+                    isCompleted = true;
+                    
+                    // 清理所有未执行的setTimeout
+                    stepTimeouts.forEach(function(timeoutId) {
+                        if (timeoutId) clearTimeout(timeoutId);
+                    });
+                    stepTimeouts = [];
+                    
+                    // 标记所有步骤为完成
+                    steps.forEach(function(s) {
+                        try {
+                            const el = document.getElementById(s.id);
+                            if (el) {
+                                el.classList.remove('active');
+                                el.classList.add('completed');
+                            }
+                        } catch (e) {
+                            // 忽略错误
+                        }
+                    });
+                    
+                    // 更新图标和标题
+                    try {
+                        const securityIcon = document.querySelector('.security-icon');
+                        if (securityIcon) {
+                            securityIcon.textContent = '✓';
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                    
+                    // 更新主标题
+                    try {
+                        const mainTitle = securityCheckContent.querySelector('h2');
+                        if (mainTitle) {
+                            mainTitle.textContent = '安全验证';
+                            mainTitle.style.opacity = '1';
+                            mainTitle.style.transform = 'translateY(0)';
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                    
+                    try {
+                        if (checkSubtitle) {
+                            checkSubtitle.style.display = 'none';
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                    
+                    // 显示完成消息
+                    try {
+                        if (securityCheckContent) {
+                            securityCheckContent.classList.add('check-complete');
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                    
+                    // 确保进度条100%
+                    try {
+                        if (progressFill) {
+                            progressFill.style.width = '100%';
+                        }
+                    } catch (e) {
+                        // 忽略错误
+                    }
+                    
+                    // 检测完成后自动进入线路选择界面（延迟一点显示完成效果）
+                    setTimeout(function() {
+                        hideSecurityCheck();
+                    }, 800);
+                }
+                
+                // 设置总超时保护
+                const totalTimeoutDuration = isIOS ? 2500 : 3000;
+                const totalTimeout = setTimeout(function() {
+                    forceComplete();
+                }, totalTimeoutDuration);
+                stepTimeouts.push(totalTimeout);
+                
+                // 添加额外的安全检查：如果2秒后还没完成，强制完成
+                const quickTimeout = setTimeout(function() {
+                    if (!isCompleted && currentStep < steps.length - 1) {
+                        currentStep = steps.length;
+                        forceComplete();
+                    }
+                }, 2000);
+                stepTimeouts.push(quickTimeout);
+                
+                function showNextStep() {
+                    if (isCompleted) return;
+                    
+                    const elapsed = Date.now() - startTime;
+                    if (elapsed > 3000) {
+                        forceComplete();
+                        return;
+                    }
+                    
+                    if (currentStep < steps.length) {
+                        const step = steps[currentStep];
+                        
+                        try {
+                            const stepElement = document.getElementById(step.id);
+                            if (stepElement) {
+                                stepElement.classList.add('active');
+                            }
+                        } catch (e) {
+                            // 忽略错误
+                        }
+                        
+                        try {
+                            const progress = ((currentStep + 1) / steps.length) * 100;
+                            if (progressFill) {
+                                progressFill.style.width = progress + '%';
+                            }
+                        } catch (e) {
+                            // 忽略错误
+                        }
+                        
+                        try {
+                            if (checkSubtitle) {
+                                checkSubtitle.textContent = step.text + '...';
+                            }
+                        } catch (e) {
+                            // 忽略错误
+                        }
+                        
+                        currentStep++;
+                        
+                        if (currentStep < steps.length) {
+                            const nextDelay = isIOS ? Math.min(step.delay, 400) : step.delay;
+                            try {
+                                const timeoutId = setTimeout(function() {
+                                    showNextStep();
+                                }, nextDelay);
+                                stepTimeouts.push(timeoutId);
+                            } catch (e) {
+                                setTimeout(function() {
+                                    showNextStep();
+                                }, 100);
+                            }
+                        } else {
+                            forceComplete();
+                        }
+                    } else {
+                        forceComplete();
+                    }
+                }
+                
+                function startCheck() {
+                    try {
+                        const firstStep = document.getElementById('step1');
+                        if (firstStep && securityCheckContent) {
+                            showNextStep();
+                        } else {
+                            forceComplete();
+                        }
+                    } catch (e) {
+                        forceComplete();
+                    }
+                }
+                
+                const startDelay = isIOS ? 100 : 200;
+                try {
+                    const startTimeoutId = setTimeout(startCheck, startDelay);
+                    stepTimeouts.push(startTimeoutId);
+                } catch (e) {
+                    if (window.requestAnimationFrame) {
+                        let frameCount = 0;
+                        const maxFrames = Math.ceil(startDelay / 16);
+                        function rafStart() {
+                            frameCount++;
+                            if (frameCount >= maxFrames) {
+                                startCheck();
+                            } else {
+                                requestAnimationFrame(rafStart);
+                            }
+                        }
+                        requestAnimationFrame(rafStart);
+                    } else {
+                        startCheck();
+                    }
+                }
+                
+                const backupStart = setTimeout(function() {
+                    if (currentStep === 0 && !isCompleted) {
+                        forceComplete();
+                    }
+                }, 1000);
+                stepTimeouts.push(backupStart);
+            }
+            
+            // 安全检测页面处理
+            function hideSecurityCheck() {
+                if (securityCheck) {
+                    securityCheck.classList.add('hidden');
+                    setTimeout(function() {
+                        if (securityCheck) {
+                            securityCheck.style.display = 'none';
+                        }
+                        // 自动显示线路选择界面
+                        showRouteSelector();
+                    }, 500);
+                }
+            }
             
             // 线路选择界面：点击线路直接进入（已移除按钮）
             
@@ -2319,32 +2599,39 @@
                 });
             }
             
-            // 初始状态：隐藏iframe，直接显示线路选择界面
+            // 初始状态：隐藏iframe，显示安全检测页面
             if (iframeWrapper) {
                 iframeWrapper.style.display = 'none';
             }
             
-            // 页面加载完成后直接显示线路选择界面
-            function initRouteSelector() {
-                // 延迟一点显示，确保DOM完全加载
-                setTimeout(function() {
-                    showRouteSelector();
-                }, 100);
+            // 确保安全检测页面在初始时显示并启动检测
+            function initSecurityCheck() {
+                if (securityCheck) {
+                    securityCheck.style.display = 'flex';
+                    const securityCheckContent = document.getElementById('securityCheckContent');
+                    if (securityCheckContent) {
+                        startSecurityCheck();
+                    } else {
+                        setTimeout(initSecurityCheck, 100);
+                    }
+                } else {
+                    setTimeout(initSecurityCheck, 100);
+                }
             }
             
             // 根据文档状态选择启动时机
             if (document.readyState === 'loading') {
-                // DOM还在加载，等待DOMContentLoaded
-                document.addEventListener('DOMContentLoaded', initRouteSelector);
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(initSecurityCheck, 100);
+                });
             } else {
-                // DOM已经加载完成，立即启动
-                initRouteSelector();
+                setTimeout(initSecurityCheck, 100);
             }
             
             // 备用启动（确保一定会执行）
             window.addEventListener('load', function() {
-                if (routeSelector && routeSelector.classList.contains('hidden')) {
-                    initRouteSelector();
+                if (securityCheck && securityCheck.style.display !== 'flex') {
+                    initSecurityCheck();
                 }
             });
         })();
