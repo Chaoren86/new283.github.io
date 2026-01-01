@@ -642,26 +642,69 @@
             position: absolute;
             top: 20px;
             right: 20px;
-            width: 40px;
-            height: 40px;
+            width: 60px;
+            height: 60px;
             border: none;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            font-size: 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            z-index: 10;
+            overflow: hidden;
+        }
+        
+        .route-refresh-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .route-refresh-btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
         
         .route-refresh-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: rotate(180deg);
+            background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
+            transform: scale(1.15) rotate(180deg);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .route-refresh-btn:active {
+            transform: scale(1.05) rotate(180deg);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .route-refresh-btn svg {
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s;
         }
         
         .route-refresh-btn.refreshing {
+            animation: spin 1s linear infinite;
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .route-refresh-btn.refreshing:hover {
+            transform: scale(1.15);
+            background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+        }
+        
+        .route-refresh-btn.refreshing svg {
             animation: spin 1s linear infinite;
         }
         
@@ -698,6 +741,14 @@
             
             .route-btn {
                 width: 100%;
+            }
+            
+            .route-refresh-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+                top: 15px;
+                right: 15px;
             }
         }
         
@@ -1140,7 +1191,14 @@
     </div>
     <!-- 线路选择界面 -->
     <div id="routeSelector" class="route-selector hidden">
-        <button class="route-refresh-btn" id="routeRefreshBtn" title="重新检测延迟">🔄</button>
+        <button class="route-refresh-btn" id="routeRefreshBtn" title="重新检测延迟">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="currentColor"/>
+            </svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="currentColor"/>
+            </svg>
+        </button>
         <div class="route-selector-content">
             <div class="route-selector-header">
                 <h2>选择访问线路</h2>
@@ -1149,46 +1207,6 @@
             <div class="route-list" id="routeList">
                 <!-- 线路列表将动态生成 -->
             </div>
-            <div class="route-actions">
-                <button class="route-btn route-btn-secondary" id="routeCancelBtn">取消</button>
-                <button class="route-btn route-btn-primary" id="routeConfirmBtn" disabled>确认选择</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 安全检测页面 -->
-    <div id="securityCheck" class="security-check">
-        <div class="security-check-content" id="securityCheckContent">
-            <div class="security-icon">🔒</div>
-            <h2>安全检测中</h2>
-            <div class="subtitle" id="checkSubtitle">正在验证访问环境...</div>
-            
-            <div class="check-steps">
-                <div class="check-step" id="step1">
-                    <div class="step-icon">1</div>
-                    <div class="step-text">检测浏览器环境</div>
-                </div>
-                <div class="check-step" id="step2">
-                    <div class="step-icon">2</div>
-                    <div class="step-text">验证安全连接</div>
-                </div>
-                <div class="check-step" id="step3">
-                    <div class="step-icon">3</div>
-                    <div class="step-text">检查访问权限</div>
-                </div>
-                <div class="check-step" id="step4">
-                    <div class="step-icon">4</div>
-                    <div class="step-text">完成安全验证</div>
-                </div>
-            </div>
-            
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-            
-            <button class="security-check-btn" id="securityCheckBtn">
-                <span>点击进入 <span class="arrow-hint">→</span></span>
-            </button>
         </div>
     </div>
     
@@ -1262,13 +1280,6 @@
                             }
                         }, 0);
                     }
-                }
-                // 确保安全检测页面立即可见
-                const securityCheck = document.getElementById('securityCheck');
-                if (securityCheck) {
-                    securityCheck.style.display = 'flex';
-                    securityCheck.style.visibility = 'visible';
-                    securityCheck.style.opacity = '1';
                 }
                 // 强制触发一次重绘
                 if (window.requestAnimationFrame) {
@@ -1448,12 +1459,8 @@
             const loading = document.getElementById('loading');
             const iframeWrapper = document.getElementById('iframeWrapper');
             const mixedContentWarning = document.getElementById('mixedContentWarning');
-            const securityCheck = document.getElementById('securityCheck');
-            const securityCheckBtn = document.getElementById('securityCheckBtn');
             const routeSelector = document.getElementById('routeSelector');
             const routeList = document.getElementById('routeList');
-            const routeConfirmBtn = document.getElementById('routeConfirmBtn');
-            const routeCancelBtn = document.getElementById('routeCancelBtn');
             const routeRefreshBtn = document.getElementById('routeRefreshBtn');
             
             // 变量初始化
@@ -1484,7 +1491,7 @@
                 {
                     id: 'route3',
                     name: '线路三',
-                    url: 'https://jxyzp.com',  // 备用线路二URL
+                    url: 'https://z6zo20.cn',  // 备用线路二URL
                     description: '备用线路二'
                 }
                 // 可以继续添加更多线路，例如：
@@ -1752,18 +1759,11 @@
                     
                     routeItem.addEventListener('click', function() {
                         if (latency && latency.status === 'testing') return;
+                        if (latency && latency.status === 'error') return; // 连接失败的线路不能选择
                         
-                        // 移除其他选中状态
-                        document.querySelectorAll('.route-item').forEach(function(item) {
-                            item.classList.remove('selected');
-                        });
-                        
-                        routeItem.classList.add('selected');
+                        // 直接选择并进入该线路
                         selectedRoute = route;
-                        
-                        if (routeConfirmBtn) {
-                            routeConfirmBtn.disabled = false;
-                        }
+                        confirmRouteSelection();
                     });
                     
                     routeList.appendChild(routeItem);
@@ -1806,15 +1806,12 @@
                 
                 // 检测所有线路
                 testAllRoutes().then(function(fastestRoute) {
-                    // 自动选择最快的线路
+                    // 自动选择最快的线路（但不自动进入，等待用户点击）
                     if (fastestRoute && !selectedRoute) {
                         selectedRoute = fastestRoute;
                         const routeItem = document.querySelector('[data-route-id="' + fastestRoute.id + '"]');
                         if (routeItem) {
                             routeItem.classList.add('selected');
-                            if (routeConfirmBtn) {
-                                routeConfirmBtn.disabled = false;
-                            }
                         }
                     }
                     renderRouteList();
@@ -2297,316 +2294,9 @@
                 initializeLinks();
             }
             
-            // 安全检测动画
-            function startSecurityCheck() {
-                const securityCheckContent = document.getElementById('securityCheckContent');
-                const checkSubtitle = document.getElementById('checkSubtitle');
-                const progressFill = document.getElementById('progressFill');
-                
-                // 确保必要的DOM元素存在
-                if (!securityCheckContent) {
-                    console.warn('安全检测内容元素未找到，延迟重试');
-                    setTimeout(startSecurityCheck, 200);
-                    return;
-                }
-                
-                // 检测是否为iOS设备
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                
-                // iOS设备使用更短的延迟时间
-                const baseDelay = isIOS ? 200 : 300;
-                const steps = [
-                    { id: 'step1', text: '检测浏览器环境', delay: baseDelay },
-                    { id: 'step2', text: '验证安全连接', delay: baseDelay * 2 },
-                    { id: 'step3', text: '检查访问权限', delay: baseDelay * 3 },
-                    { id: 'step4', text: '完成安全验证', delay: baseDelay * 4 }
-                ];
-                
-                let currentStep = 0;
-                let isCompleted = false;
-                let stepTimeouts = []; // 存储所有setTimeout的ID，用于清理
-                let startTime = Date.now(); // 记录开始时间
-                
-                // 强制完成函数（超时保护）
-                function forceComplete() {
-                    if (isCompleted) return;
-                    isCompleted = true;
-                    
-                    // 清理所有未执行的setTimeout
-                    stepTimeouts.forEach(function(timeoutId) {
-                        if (timeoutId) clearTimeout(timeoutId);
-                    });
-                    stepTimeouts = [];
-                    
-                    // 标记所有步骤为完成
-                    steps.forEach(function(s) {
-                        try {
-                            const el = document.getElementById(s.id);
-                            if (el) {
-                                el.classList.remove('active');
-                                el.classList.add('completed');
-                            }
-                        } catch (e) {
-                            // 忽略错误
-                        }
-                    });
-                    
-                    // 更新图标和标题
-                    try {
-                        const securityIcon = document.querySelector('.security-icon');
-                        if (securityIcon) {
-                            securityIcon.textContent = '✓';
-                        }
-                    } catch (e) {
-                        // 忽略错误
-                    }
-                    
-                    // 更新主标题
-                    try {
-                        const mainTitle = securityCheckContent.querySelector('h2');
-                        if (mainTitle) {
-                            mainTitle.textContent = '安全验证';
-                            mainTitle.style.opacity = '1';
-                            mainTitle.style.transform = 'translateY(0)';
-                        }
-                    } catch (e) {
-                        // 忽略错误
-                    }
-                    
-                    try {
-                        if (checkSubtitle) {
-                            checkSubtitle.style.display = 'none';
-                        }
-                    } catch (e) {
-                        // 忽略错误
-                    }
-                    
-                    // 显示完成消息和按钮
-                    try {
-                        if (securityCheckContent) {
-                            securityCheckContent.classList.add('check-complete');
-                        }
-                    } catch (e) {
-                        // 忽略错误
-                    }
-                    
-                    // 确保进度条100%
-                    try {
-                        if (progressFill) {
-                            progressFill.style.width = '100%';
-                        }
-                    } catch (e) {
-                        // 忽略错误
-                    }
-                }
-                
-                // 设置总超时保护（iOS设备2.5秒，其他设备3秒后强制完成）
-                const totalTimeoutDuration = isIOS ? 2500 : 3000;
-                const totalTimeout = setTimeout(function() {
-                    forceComplete();
-                }, totalTimeoutDuration);
-                stepTimeouts.push(totalTimeout);
-                
-                // 添加额外的安全检查：如果2秒后还没完成，强制完成
-                const quickTimeout = setTimeout(function() {
-                    if (!isCompleted && currentStep < steps.length - 1) {
-                        // 如果还在前面的步骤，直接跳到完成
-                        currentStep = steps.length;
-                        forceComplete();
-                    }
-                }, 2000);
-                stepTimeouts.push(quickTimeout);
-                
-                function showNextStep() {
-                    if (isCompleted) return;
-                    
-                    // 检查是否超时（如果超过3秒还没完成，直接完成）
-                    const elapsed = Date.now() - startTime;
-                    if (elapsed > 3000) {
-                        forceComplete();
-                        return;
-                    }
-                    
-                    if (currentStep < steps.length) {
-                        const step = steps[currentStep];
-                        
-                        // 更新UI（即使元素不存在也继续）
-                        try {
-                            const stepElement = document.getElementById(step.id);
-                            if (stepElement) {
-                                stepElement.classList.add('active');
-                            }
-                        } catch (e) {
-                            // 忽略错误
-                        }
-                        
-                        // 更新进度条
-                        try {
-                            const progress = ((currentStep + 1) / steps.length) * 100;
-                            if (progressFill) {
-                                progressFill.style.width = progress + '%';
-                            }
-                        } catch (e) {
-                            // 忽略错误
-                        }
-                        
-                        // 更新副标题
-                        try {
-                            if (checkSubtitle) {
-                                checkSubtitle.textContent = step.text + '...';
-                            }
-                        } catch (e) {
-                            // 忽略错误
-                        }
-                        
-                        currentStep++;
-                        
-                        // 继续下一步（使用更短的延迟，iOS设备更快）
-                        if (currentStep < steps.length) {
-                            const nextDelay = isIOS ? Math.min(step.delay, 400) : step.delay;
-                            try {
-                                const timeoutId = setTimeout(function() {
-                                    showNextStep();
-                                }, nextDelay);
-                                stepTimeouts.push(timeoutId);
-                            } catch (e) {
-                                // 如果setTimeout失败，使用requestAnimationFrame或直接执行
-                                if (window.requestAnimationFrame) {
-                                    let frameCount = 0;
-                                    const maxFrames = Math.ceil(nextDelay / 16); // 假设60fps
-                                    function rafCallback() {
-                                        frameCount++;
-                                        if (frameCount >= maxFrames) {
-                                            showNextStep();
-                                        } else {
-                                            requestAnimationFrame(rafCallback);
-                                        }
-                                    }
-                                    requestAnimationFrame(rafCallback);
-                                } else {
-                                    // 最后的备选方案：直接执行下一步
-                                    setTimeout(function() {
-                                        showNextStep();
-                                    }, 100);
-                                }
-                            }
-                        } else {
-                            // 所有步骤完成，立即完成（不等待延迟）
-                            forceComplete();
-                        }
-                    } else {
-                        // 如果已经超过步骤数，强制完成
-                        forceComplete();
-                    }
-                }
-                
-                // 启动检测函数
-                function startCheck() {
-                    try {
-                        const firstStep = document.getElementById('step1');
-                        if (firstStep && securityCheckContent) {
-                            showNextStep();
-                        } else {
-                            // 如果元素不存在，直接强制完成（不重试，避免卡住）
-                            forceComplete();
-                        }
-                    } catch (e) {
-                        // 如果出错，直接强制完成
-                        forceComplete();
-                    }
-                }
-                
-                // iOS设备更快启动，其他设备稍慢
-                const startDelay = isIOS ? 100 : 200;
-                
-                // 延迟开始检测动画
-                try {
-                    const startTimeoutId = setTimeout(startCheck, startDelay);
-                    stepTimeouts.push(startTimeoutId);
-                } catch (e) {
-                    // 如果setTimeout失败，使用requestAnimationFrame
-                    if (window.requestAnimationFrame) {
-                        let frameCount = 0;
-                        const maxFrames = Math.ceil(startDelay / 16);
-                        function rafStart() {
-                            frameCount++;
-                            if (frameCount >= maxFrames) {
-                                startCheck();
-                            } else {
-                                requestAnimationFrame(rafStart);
-                            }
-                        }
-                        requestAnimationFrame(rafStart);
-                    } else {
-                        // 最后的备选方案：立即启动
-                        startCheck();
-                    }
-                }
-                
-                // 备用启动：如果1秒后还没开始，强制完成
-                const backupStart = setTimeout(function() {
-                    if (currentStep === 0 && !isCompleted) {
-                        forceComplete();
-                    }
-                }, 1000);
-                stepTimeouts.push(backupStart);
-            }
+            // 页面初始化：直接显示线路选择界面（已移除安全检测页面）
             
-            // 安全检测页面处理
-            function hideSecurityCheck() {
-                if (securityCheck) {
-                    // 先添加隐藏类，触发淡出动画
-                    securityCheck.classList.add('hidden');
-                    // 等待动画完成后，完全隐藏元素
-                    setTimeout(function() {
-                        if (securityCheck) {
-                            securityCheck.style.display = 'none';
-                        }
-                        // 显示线路选择界面
-                        showRouteSelector();
-                    }, 500);
-                }
-            }
-            
-            // 点击按钮进入
-            if (securityCheckBtn) {
-                securityCheckBtn.addEventListener('click', function() {
-                    // 添加点击动画效果
-                    securityCheckBtn.style.transform = 'scale(0.95)';
-                    setTimeout(function() {
-                        securityCheckBtn.style.transform = '';
-                        hideSecurityCheck();
-                    }, 150);
-                });
-            }
-            
-            // 线路选择界面按钮事件
-            if (routeConfirmBtn) {
-                routeConfirmBtn.addEventListener('click', function() {
-                    if (selectedRoute) {
-                        confirmRouteSelection();
-                    }
-                });
-            }
-            
-            if (routeCancelBtn) {
-                routeCancelBtn.addEventListener('click', function() {
-                    // 取消选择，使用默认线路
-                    if (routeConfig.length > 0) {
-                        selectedRoute = routeConfig[0];
-                        iframeBaseUrl = selectedRoute.url;
-                    }
-                    hideRouteSelector();
-                    // 更新所有链接
-                    updateAllLinks();
-                    // 显示iframe
-                    if (iframeWrapper) {
-                        iframeWrapper.style.display = '';
-                    }
-                    updateIframeUrl();
-                });
-            }
+            // 线路选择界面：点击线路直接进入（已移除按钮）
             
             if (routeRefreshBtn) {
                 routeRefreshBtn.addEventListener('click', function() {
@@ -2616,15 +2306,12 @@
                     
                     testAllRoutes().then(function(fastestRoute) {
                         routeRefreshBtn.classList.remove('refreshing');
-                        // 自动选择最快的线路
+                        // 自动选择最快的线路（但不自动进入，等待用户点击）
                         if (fastestRoute && !selectedRoute) {
                             selectedRoute = fastestRoute;
                             const routeItem = document.querySelector('[data-route-id="' + fastestRoute.id + '"]');
                             if (routeItem) {
                                 routeItem.classList.add('selected');
-                                if (routeConfirmBtn) {
-                                    routeConfirmBtn.disabled = false;
-                                }
                             }
                         }
                         renderRouteList();
@@ -2632,45 +2319,32 @@
                 });
             }
             
-            // 初始状态：隐藏iframe，显示安全检测页面
+            // 初始状态：隐藏iframe，直接显示线路选择界面
             if (iframeWrapper) {
                 iframeWrapper.style.display = 'none';
             }
             
-            // 确保安全检测页面在初始时显示并启动检测
-            function initSecurityCheck() {
-                if (securityCheck) {
-                    securityCheck.style.display = 'flex';
-                    // 确保DOM元素存在后再启动检测动画
-                    const securityCheckContent = document.getElementById('securityCheckContent');
-                    if (securityCheckContent) {
-                        // 启动检测动画
-                        startSecurityCheck();
-                    } else {
-                        // 如果DOM还没准备好，延迟重试
-                        setTimeout(initSecurityCheck, 100);
-                    }
-                } else {
-                    // 如果securityCheck元素不存在，延迟重试
-                    setTimeout(initSecurityCheck, 100);
-                }
+            // 页面加载完成后直接显示线路选择界面
+            function initRouteSelector() {
+                // 延迟一点显示，确保DOM完全加载
+                setTimeout(function() {
+                    showRouteSelector();
+                }, 100);
             }
             
             // 根据文档状态选择启动时机
             if (document.readyState === 'loading') {
                 // DOM还在加载，等待DOMContentLoaded
-                document.addEventListener('DOMContentLoaded', function() {
-                    setTimeout(initSecurityCheck, 100);
-                });
+                document.addEventListener('DOMContentLoaded', initRouteSelector);
             } else {
                 // DOM已经加载完成，立即启动
-                setTimeout(initSecurityCheck, 100);
+                initRouteSelector();
             }
             
             // 备用启动（确保一定会执行）
             window.addEventListener('load', function() {
-                if (securityCheck && securityCheck.style.display !== 'flex') {
-                    initSecurityCheck();
+                if (routeSelector && routeSelector.classList.contains('hidden')) {
+                    initRouteSelector();
                 }
             });
         })();
