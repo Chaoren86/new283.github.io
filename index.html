@@ -1293,6 +1293,13 @@
             <a href="#" target="_blank" rel="noopener noreferrer" class="error-link" id="mixedContentLink" style="margin-top: 15px;">在新窗口中打开网站</a>
         </div>
         <div class="iframe-wrapper" id="iframeWrapper">
+            <!-- 重新选择线路按钮 -->
+            <button class="route-change-btn" id="routeChangeBtn" title="重新选择线路" style="display: none;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>
+                </svg>
+                <span>重新选择线路</span>
+            </button>
             <div class="iframe-container">
                 <div class="loading" id="loading">
                     <div class="loading-spinner"></div>
@@ -1538,6 +1545,7 @@
             const routeSelector = document.getElementById('routeSelector');
             const routeList = document.getElementById('routeList');
             const routeRefreshBtn = document.getElementById('routeRefreshBtn');
+            const routeChangeBtn = document.getElementById('routeChangeBtn');
             
             // 变量初始化
             let loadTimeout;
@@ -1988,6 +1996,10 @@
                 }
                 
                 routeSelector.classList.remove('hidden');
+                // 隐藏重新选择线路按钮（显示选择界面时）
+                if (routeChangeBtn) {
+                    routeChangeBtn.style.display = 'none';
+                }
                 selectedRoute = null;
                 routeLatencies = {};
                 
@@ -2046,6 +2058,11 @@
                 // 显示iframe容器
                 if (iframeWrapper) {
                     iframeWrapper.style.display = '';
+                }
+                
+                // 显示重新选择线路按钮
+                if (routeChangeBtn) {
+                    routeChangeBtn.style.display = 'flex';
                 }
                 
                 // 只有在用户选择线路后才设置iframe的src并开始加载
@@ -2802,6 +2819,18 @@
             }
             
             // 线路选择界面：点击线路直接进入（已移除按钮）
+            
+            // 重新选择线路按钮事件
+            if (routeChangeBtn) {
+                routeChangeBtn.addEventListener('click', function() {
+                    // 隐藏iframe，显示线路选择界面
+                    if (iframeWrapper) {
+                        iframeWrapper.style.display = 'none';
+                    }
+                    // 显示线路选择界面
+                    showRouteSelector();
+                });
+            }
             
             if (routeRefreshBtn) {
                 routeRefreshBtn.addEventListener('click', function() {
