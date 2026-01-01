@@ -321,7 +321,7 @@
             min-height: 0;
             background: #f5f5f5;
             overflow: hidden;
-            /* 确保点击位置准确 */
+            /* 确保点击位置准确 - Chrome模拟器优化 */
             touch-action: pan-x pan-y;
             /* 确保容器定位准确，不影响点击 */
             transform: none;
@@ -333,6 +333,8 @@
             /* 防止内容溢出导致横向滚动 */
             max-width: 100%;
             overflow-x: hidden;
+            /* Chrome模拟器优化 - 确保坐标准确 */
+            -webkit-tap-highlight-color: transparent;
         }
         
         iframe {
@@ -2633,7 +2635,7 @@
                     
                     // 确保点击位置准确 - 移除所有可能影响定位的样式
                     iframe.style.pointerEvents = 'auto';
-                    iframe.style.touchAction = 'auto';
+                    iframe.style.touchAction = 'manipulation'; // Chrome模拟器优化
                     iframe.style.transform = 'none';
                     iframe.style.willChange = 'auto';
                     iframe.style.zoom = '1';
@@ -2643,6 +2645,9 @@
                     iframe.style.oTransform = 'none';
                     iframe.style.margin = '0';
                     iframe.style.padding = '0';
+                    // Chrome模拟器优化 - 确保坐标准确
+                    iframe.style.webkitTapHighlightColor = 'transparent';
+                    iframe.style.webkitTouchCallout = 'none';
                     
                     // 确保iframe容器定位准确
                     iframeWrapper.style.overflow = 'hidden';
@@ -2680,17 +2685,21 @@
                     }
                     
                     // 强制重绘和重新计算布局（确保点击位置准确）
-                    if (isWeChat || isIOS) {
-                        // 触发重排，确保布局准确
-                        void iframe.offsetHeight;
-                        void iframeContainer?.offsetHeight;
-                        void iframeWrapper.offsetHeight;
-                        
-                        // 确保iframe的尺寸和位置完全匹配容器
-                        const containerRect = iframeContainer?.getBoundingClientRect();
+                    // Chrome模拟器和所有设备都需要确保布局准确
+                    void iframe.offsetHeight;
+                    if (iframeContainer) {
+                        void iframeContainer.offsetHeight;
+                    }
+                    void iframeWrapper.offsetHeight;
+                    
+                    // 确保iframe的尺寸和位置完全匹配容器（所有设备，特别是Chrome模拟器）
+                    if (iframeContainer) {
+                        const containerRect = iframeContainer.getBoundingClientRect();
                         if (containerRect) {
                             iframe.style.width = containerRect.width + 'px';
                             iframe.style.height = containerRect.height + 'px';
+                            iframe.style.left = '0px';
+                            iframe.style.top = '0px';
                         }
                     }
                 }
