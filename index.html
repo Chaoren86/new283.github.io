@@ -172,7 +172,7 @@
             will-change: auto;
         }
         
-        /* 重新选择线路按钮 */
+        /* 重选线路按钮 */
         .route-change-btn {
             position: fixed;
             top: 15px;
@@ -188,22 +188,31 @@
             border-radius: 25px;
             font-size: 14px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
+            cursor: move;
+            cursor: grab;
+            transition: box-shadow 0.3s, background 0.3s;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
             /* 确保按钮可以正常点击，不影响iframe */
             pointer-events: auto;
-            touch-action: manipulation;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .route-change-btn:active {
+            cursor: grabbing;
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
         }
         
         .route-change-btn:hover {
             background: linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%);
-            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
         }
         
-        .route-change-btn:active {
-            transform: translateY(0);
+        .route-change-btn.dragging {
+            opacity: 0.9;
+            cursor: grabbing;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.7);
         }
         
         .route-change-btn svg {
@@ -1369,12 +1378,12 @@
             <a href="#" target="_blank" rel="noopener noreferrer" class="error-link" id="mixedContentLink" style="margin-top: 15px;">在新窗口中打开网站</a>
         </div>
         <div class="iframe-wrapper" id="iframeWrapper">
-            <!-- 重新选择线路按钮 -->
-            <button class="route-change-btn" id="routeChangeBtn" title="重新选择线路" style="display: none;">
+            <!-- 重选线路按钮 -->
+            <button class="route-change-btn" id="routeChangeBtn" title="重选线路（可拖动）" style="display: none;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>
                 </svg>
-                <span>重新选择线路</span>
+                <span>重选线路</span>
             </button>
             <div class="iframe-container">
                 <div class="loading" id="loading">
@@ -2914,16 +2923,121 @@
             
             // 线路选择界面：点击线路直接进入（已移除按钮）
             
-            // 重新选择线路按钮事件
+            // 重选线路按钮事件（支持拖动）
             if (routeChangeBtn) {
-                routeChangeBtn.addEventListener('click', function() {
-                    // 隐藏iframe，显示线路选择界面
-                    if (iframeWrapper) {
-                        iframeWrapper.style.display = 'none';
+                let isDragging = false;
+                let dragStartX = 0;
+                let dragStartY = 0;
+                let initialX = 0;
+                let initialY = 0;
+                let currentX = 0;
+                let currentY = 0;
+                
+                // 从localStorage恢复按钮位置
+                const savedPosition = localStorage.getItem('routeChangeBtnPosition');
+                if (savedPosition) {
+                    try {
+                        const pos = JSON.parse(savedPosition);
+                        routeChangeBtn.style.top = pos.top;
+                        routeChangeBtn.style.right = pos.right;
+                        routeChangeBtn.style.left = pos.left;
+                        routeChangeBtn.style.bottom = pos.bottom;
+                    } catch (e) {
+                        console.error('Failed to restore button position:', e);
                     }
-                    // 显示线路选择界面
-                    showRouteSelector();
-                });
+                }
+                
+                // 鼠标/触摸开始拖动
+                function startDrag(e) {
+                    isDragging = false;
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    dragStartX = clientX;
+                    dragStartY = clientY;
+                    
+                    const rect = routeChangeBtn.getBoundingClientRect();
+                    initialX = rect.left;
+                    initialY = rect.top;
+                    
+                    routeChangeBtn.classList.add('dragging');
+                    e.preventDefault();
+                }
+                
+                // 拖动中
+                function drag(e) {
+                    if (!routeChangeBtn.classList.contains('dragging')) return;
+                    
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    
+                    const deltaX = clientX - dragStartX;
+                    const deltaY = clientY - dragStartY;
+                    
+                    // 如果移动距离超过5px，认为是拖动而不是点击
+                    if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                        isDragging = true;
+                    }
+                    
+                    if (isDragging) {
+                        currentX = initialX + deltaX;
+                        currentY = initialY + deltaY;
+                        
+                        // 限制在视口内
+                        const maxX = window.innerWidth - routeChangeBtn.offsetWidth;
+                        const maxY = window.innerHeight - routeChangeBtn.offsetHeight;
+                        
+                        currentX = Math.max(0, Math.min(currentX, maxX));
+                        currentY = Math.max(0, Math.min(currentY, maxY));
+                        
+                        // 移除right和bottom，使用left和top定位
+                        routeChangeBtn.style.left = currentX + 'px';
+                        routeChangeBtn.style.top = currentY + 'px';
+                        routeChangeBtn.style.right = 'auto';
+                        routeChangeBtn.style.bottom = 'auto';
+                    }
+                    
+                    e.preventDefault();
+                }
+                
+                // 结束拖动
+                function endDrag(e) {
+                    if (routeChangeBtn.classList.contains('dragging')) {
+                        routeChangeBtn.classList.remove('dragging');
+                        
+                        // 保存位置到localStorage
+                        const rect = routeChangeBtn.getBoundingClientRect();
+                        const position = {
+                            top: routeChangeBtn.style.top,
+                            left: routeChangeBtn.style.left,
+                            right: routeChangeBtn.style.right,
+                            bottom: routeChangeBtn.style.bottom
+                        };
+                        localStorage.setItem('routeChangeBtnPosition', JSON.stringify(position));
+                        
+                        // 如果不是拖动，而是点击，则执行点击事件
+                        if (!isDragging) {
+                            // 隐藏iframe，显示线路选择界面
+                            if (iframeWrapper) {
+                                iframeWrapper.style.display = 'none';
+                            }
+                            // 显示线路选择界面
+                            showRouteSelector();
+                        }
+                        
+                        isDragging = false;
+                    }
+                }
+                
+                // 鼠标事件
+                routeChangeBtn.addEventListener('mousedown', startDrag);
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('mouseup', endDrag);
+                
+                // 触摸事件
+                routeChangeBtn.addEventListener('touchstart', startDrag, { passive: false });
+                document.addEventListener('touchmove', drag, { passive: false });
+                document.addEventListener('touchend', endDrag);
             }
             
             if (routeRefreshBtn) {
