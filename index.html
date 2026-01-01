@@ -1233,8 +1233,8 @@
         </button>
         <div class="route-selector-content">
             <div class="route-selector-header">
-                <h2>选择访问线路</h2>
-                <p>正在检测各线路延迟，请稍候...</p>
+                <h2>请选择访问线路</h2>
+                <p>如遇打不开大概率是被拦截屏蔽，请尝试其他的线路。</p>
             </div>
             <div class="route-list" id="routeList">
                 <!-- 线路列表将动态生成 -->
@@ -1269,7 +1269,7 @@
                     allowfullscreen
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-modals"
                     referrerpolicy="no-referrer-when-downgrade"
-                    loading="eager"
+                    loading="lazy"
                     scrolling="yes"
                     style="overflow: auto; -webkit-overflow-scrolling: touch;">
                     <p>您的浏览器不支持iframe。请<a href="#" target="_blank" rel="noopener noreferrer" id="fallbackLink">点击这里</a>在新窗口中打开。</p>
@@ -1821,7 +1821,12 @@
                     if (iframeWrapper) {
                         iframeWrapper.style.display = '';
                     }
-                    updateIframeUrl();
+                    // 更新所有链接
+                    updateAllLinks();
+                    // 只有在选择线路后才设置iframe的src
+                    if (iframe) {
+                        updateIframeUrl();
+                    }
                     setTimeout(updateIframeHeight, 100);
                     return;
                 }
@@ -1875,11 +1880,23 @@
                 // 更新所有链接
                 updateAllLinks();
                 
-                // 更新iframe URL
+                // 显示iframe容器
                 if (iframeWrapper) {
                     iframeWrapper.style.display = '';
                 }
-                updateIframeUrl();
+                
+                // 只有在用户选择线路后才设置iframe的src并开始加载
+                // 确保iframe之前没有src，避免提前加载
+                if (iframe) {
+                    // 如果iframe还没有src，或者src是空的，才设置新的URL
+                    if (!iframe.src || iframe.src === '' || iframe.src === 'about:blank') {
+                        updateIframeUrl();
+                    } else {
+                        // 如果已经有src，更新为新的URL（切换线路时）
+                        updateIframeUrl();
+                    }
+                }
+                
                 // 更新高度
                 setTimeout(updateIframeHeight, 100);
                 setTimeout(updateIframeHeight, 500);
@@ -2004,26 +2021,12 @@
             }
             
             // iframe加载事件处理
+            // 注意：不在页面加载时立即设置iframe的src，等待用户选择线路后再加载
             if (iframe) {
-                // 立即设置iframe的src（在页面加载的最早时机）
-                updateIframeUrl();
-                
-                // 如果DOM还在加载，也监听DOMContentLoaded确保更新
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', function() {
-                        updateIframeUrl();
-                    });
-                }
-                
-                // 监听hash变化，自动更新iframe URL
+                // 监听hash变化，自动更新iframe URL（仅在已选择线路后）
                 window.addEventListener('hashchange', function() {
-                    updateIframeUrl();
-                });
-                
-                // 页面完全加载后再次检查（确保参数被应用）
-                window.addEventListener('load', function() {
-                    const param = getQueryParam() || getCurrentHash();
-                    if (param && iframe && !iframe.src.includes(param)) {
+                    // 只有在已经选择了线路的情况下才更新
+                    if (selectedRoute && iframe.src) {
                         updateIframeUrl();
                     }
                 });
