@@ -2633,6 +2633,12 @@
                     // 防止内容溢出
                     iframe.style.boxSizing = 'border-box';
                     
+                    // 键盘弹起时，确保iframe可以滚动，让输入框可见
+                    if (window.keyboardVisible) {
+                        iframe.style.overflowY = 'auto';
+                        iframe.style.webkitOverflowScrolling = 'touch';
+                    }
+                    
                     // 确保点击位置准确 - 移除所有可能影响定位的样式
                     iframe.style.pointerEvents = 'auto';
                     iframe.style.touchAction = 'manipulation'; // Chrome模拟器优化
@@ -2746,9 +2752,10 @@
                 });
                 
                 window.visualViewport.addEventListener('scroll', function() {
-                    // 防止键盘弹起时的自动滚动
+                    // 键盘弹起时，允许visualViewport滚动，这样输入框可以保持在可视区域
+                    // 但防止外层页面滚动
                     if (keyboardVisible) {
-                        window.visualViewport.scrollTop = 0;
+                        // 只防止外层页面滚动，允许visualViewport滚动
                         window.scrollTo(0, 0);
                     }
                     updateIframeHeight();
@@ -2757,7 +2764,7 @@
             
             // 处理键盘弹起
             function handleKeyboardShow() {
-                // 防止页面滚动
+                // 防止外层页面滚动，但允许iframe内容滚动
                 document.body.style.position = 'fixed';
                 document.body.style.top = '0';
                 document.body.style.left = '0';
@@ -2765,14 +2772,28 @@
                 document.body.style.bottom = '0';
                 document.body.style.overflow = 'hidden';
                 
-                // 立即更新iframe高度
+                // 立即更新iframe高度，使其适应键盘弹起后的可视区域
                 updateIframeHeight();
                 
-                // 防止自动滚动
-                if (window.visualViewport) {
-                    window.visualViewport.scrollTop = 0;
-                }
-                window.scrollTo(0, 0);
+                // 延迟一下，让iframe内容有机会自动滚动到输入框位置
+                setTimeout(function() {
+                    // 尝试让iframe内容滚动到底部（输入框通常在底部）
+                    try {
+                        if (iframe && iframe.contentWindow) {
+                            // 滚动到iframe底部，确保输入框可见
+                            iframe.contentWindow.scrollTo({
+                                top: iframe.contentDocument?.body?.scrollHeight || 999999,
+                                behavior: 'smooth'
+                            });
+                        }
+                    } catch (e) {
+                        // 跨域限制，无法访问iframe内容
+                        console.log('无法访问iframe内容（跨域限制）');
+                    }
+                    
+                    // 更新iframe高度，确保布局正确
+                    updateIframeHeight();
+                }, 300);
             }
             
             // 处理键盘收起
