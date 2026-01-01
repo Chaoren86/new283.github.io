@@ -190,13 +190,33 @@
             font-weight: 600;
             cursor: move;
             cursor: grab;
-            transition: box-shadow 0.3s, background 0.3s;
+            transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
             /* 确保按钮可以正常点击，不影响iframe */
             pointer-events: auto;
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            overflow: hidden;
+        }
+        
+        /* 折叠状态 - 只显示"选"字 */
+        .route-change-btn.collapsed {
+            padding: 8px 12px;
+            width: auto;
+            min-width: 40px;
+            border-radius: 20px 0 0 20px;
+            /* 默认靠右隐藏，只露出"选"字 */
+            right: 0 !important;
+            left: auto !important;
+            transform: translateX(calc(100% - 40px));
+        }
+        
+        /* 展开状态 */
+        .route-change-btn.expanded {
+            transform: translateX(0);
+            border-radius: 25px;
+            padding: 10px 18px;
         }
         
         .route-change-btn:active {
@@ -213,6 +233,43 @@
             opacity: 0.9;
             cursor: grabbing;
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.7);
+        }
+        
+        /* "选"字图标 */
+        .route-change-btn .select-icon {
+            font-size: 16px;
+            font-weight: 700;
+            white-space: nowrap;
+            display: none;
+            min-width: 20px;
+            text-align: center;
+            line-height: 1;
+        }
+        
+        /* 完整内容（图标+文字） */
+        .route-change-btn .btn-content {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        
+        /* 折叠状态下隐藏完整内容，显示"选"字 */
+        .route-change-btn.collapsed .btn-content {
+            display: none;
+        }
+        
+        .route-change-btn.collapsed .select-icon {
+            display: inline-block;
+        }
+        
+        /* 展开状态下显示完整内容，隐藏"选"字 */
+        .route-change-btn.expanded .btn-content {
+            display: flex;
+        }
+        
+        .route-change-btn.expanded .select-icon {
+            display: none;
         }
         
         .route-change-btn svg {
@@ -1379,11 +1436,16 @@
         </div>
         <div class="iframe-wrapper" id="iframeWrapper">
             <!-- 重选线路按钮 -->
-            <button class="route-change-btn" id="routeChangeBtn" title="重选线路（可拖动）" style="display: none;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>
-                </svg>
-                <span>重选线路</span>
+            <button class="route-change-btn collapsed" id="routeChangeBtn" title="重选线路（可拖动）" style="display: none;">
+                <!-- 折叠状态显示的"选"字 -->
+                <span class="select-icon">选</span>
+                <!-- 展开状态显示的完整内容 -->
+                <div class="btn-content">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" fill="currentColor"/>
+                    </svg>
+                    <span>重选线路</span>
+                </div>
             </button>
             <div class="iframe-container">
                 <div class="loading" id="loading">
@@ -2923,7 +2985,7 @@
             
             // 线路选择界面：点击线路直接进入（已移除按钮）
             
-            // 重选线路按钮事件（支持拖动）
+            // 重选线路按钮事件（支持拖动和展开/折叠）
             if (routeChangeBtn) {
                 let isDragging = false;
                 let dragStartX = 0;
@@ -2932,18 +2994,42 @@
                 let initialY = 0;
                 let currentX = 0;
                 let currentY = 0;
+                let isExpanded = false;
                 
-                // 从localStorage恢复按钮位置
+                // 从localStorage恢复按钮位置和状态
                 const savedPosition = localStorage.getItem('routeChangeBtnPosition');
                 if (savedPosition) {
                     try {
                         const pos = JSON.parse(savedPosition);
-                        routeChangeBtn.style.top = pos.top;
-                        routeChangeBtn.style.right = pos.right;
-                        routeChangeBtn.style.left = pos.left;
-                        routeChangeBtn.style.bottom = pos.bottom;
+                        if (pos.top) routeChangeBtn.style.top = pos.top;
+                        if (pos.right) routeChangeBtn.style.right = pos.right;
+                        if (pos.left) routeChangeBtn.style.left = pos.left;
+                        if (pos.bottom) routeChangeBtn.style.bottom = pos.bottom;
                     } catch (e) {
                         console.error('Failed to restore button position:', e);
+                    }
+                }
+                
+                // 展开按钮
+                function expandButton() {
+                    routeChangeBtn.classList.remove('collapsed');
+                    routeChangeBtn.classList.add('expanded');
+                    isExpanded = true;
+                }
+                
+                // 折叠按钮
+                function collapseButton() {
+                    routeChangeBtn.classList.remove('expanded');
+                    routeChangeBtn.classList.add('collapsed');
+                    isExpanded = false;
+                }
+                
+                // 切换展开/折叠状态
+                function toggleExpand() {
+                    if (isExpanded) {
+                        collapseButton();
+                    } else {
+                        expandButton();
                     }
                 }
                 
@@ -2959,6 +3045,14 @@
                     const rect = routeChangeBtn.getBoundingClientRect();
                     initialX = rect.left;
                     initialY = rect.top;
+                    
+                    // 如果按钮是折叠状态，先展开
+                    if (!isExpanded) {
+                        expandButton();
+                        // 展开后不执行拖动，等待下次操作
+                        e.preventDefault();
+                        return;
+                    }
                     
                     routeChangeBtn.classList.add('dragging');
                     e.preventDefault();
@@ -3016,28 +3110,70 @@
                         localStorage.setItem('routeChangeBtnPosition', JSON.stringify(position));
                         
                         // 如果不是拖动，而是点击，则执行点击事件
-                        if (!isDragging) {
+                        if (!isDragging && isExpanded) {
                             // 隐藏iframe，显示线路选择界面
                             if (iframeWrapper) {
                                 iframeWrapper.style.display = 'none';
                             }
                             // 显示线路选择界面
                             showRouteSelector();
+                            // 切换线路后自动折叠
+                            setTimeout(collapseButton, 300);
                         }
                         
                         isDragging = false;
                     }
                 }
                 
-                // 鼠标事件
+                // 点击按钮展开/折叠或执行切换线路
+                routeChangeBtn.addEventListener('click', function(e) {
+                    // 如果正在拖动，不执行点击事件
+                    if (isDragging) {
+                        e.preventDefault();
+                        return;
+                    }
+                    
+                    // 如果按钮是折叠状态，展开
+                    if (!isExpanded) {
+                        expandButton();
+                        e.preventDefault();
+                        return;
+                    }
+                    
+                    // 如果按钮已展开，执行切换线路功能
+                    if (isExpanded) {
+                        // 隐藏iframe，显示线路选择界面
+                        if (iframeWrapper) {
+                            iframeWrapper.style.display = 'none';
+                        }
+                        // 显示线路选择界面
+                        showRouteSelector();
+                        // 切换线路后自动折叠
+                        setTimeout(collapseButton, 300);
+                    }
+                });
+                
+                // 鼠标事件（用于拖动）
                 routeChangeBtn.addEventListener('mousedown', startDrag);
                 document.addEventListener('mousemove', drag);
                 document.addEventListener('mouseup', endDrag);
                 
-                // 触摸事件
+                // 触摸事件（用于拖动）
                 routeChangeBtn.addEventListener('touchstart', startDrag, { passive: false });
                 document.addEventListener('touchmove', drag, { passive: false });
                 document.addEventListener('touchend', endDrag);
+                
+                // 点击页面其他地方时折叠按钮（可选）
+                document.addEventListener('click', function(e) {
+                    if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                        // 延迟折叠，避免与按钮点击冲突
+                        setTimeout(function() {
+                            if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                                collapseButton();
+                            }
+                        }, 200);
+                    }
+                });
             }
             
             if (routeRefreshBtn) {
