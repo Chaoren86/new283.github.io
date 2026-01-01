@@ -467,11 +467,29 @@
             color: #666;
         }
         
+        .route-section {
+            margin-bottom: 25px;
+        }
+        
+        .route-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 12px;
+            padding-left: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .route-section:first-child .route-section-title {
+            color: #667eea;
+            font-size: 15px;
+        }
+        
         .route-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            margin-bottom: 20px;
         }
         
         .route-item {
@@ -728,6 +746,15 @@
             
             .route-url {
                 font-size: 11px;
+            }
+            
+            .route-section {
+                margin-bottom: 20px;
+            }
+            
+            .route-section-title {
+                font-size: 13px;
+                margin-bottom: 10px;
             }
             
             .route-latency {
@@ -1236,8 +1263,17 @@
                 <h2>请选择访问线路</h2>
                 <p>如遇打不开大概率是被拦截屏蔽，请尝试其他的线路。</p>
             </div>
-            <div class="route-list" id="routeList">
-                <!-- 线路列表将动态生成 -->
+            <div class="route-section" id="lastSelectedSection" style="display: none;">
+                <div class="route-section-title">上次选择</div>
+                <div class="route-list" id="lastSelectedRouteList">
+                    <!-- 上次选择的线路将显示在这里 -->
+                </div>
+            </div>
+            <div class="route-section" id="otherRoutesSection">
+                <div class="route-section-title">其他线路</div>
+                <div class="route-list" id="routeList">
+                    <!-- 其他线路列表将动态生成 -->
+                </div>
             </div>
         </div>
     </div>
@@ -1547,9 +1583,84 @@
             let selectedRoute = null;
             let routeLatencies = {}; // 存储各线路的延迟信息
             
+            // 存储键名
+            const STORAGE_KEY_ROUTE = 'selectedRouteId';
+            const STORAGE_KEY_URL_PARAMS = 'iframeUrlParams';
+            
+            // 从localStorage恢复选择的线路
+            function restoreSelectedRoute() {
+                try {
+                    const savedRouteId = localStorage.getItem(STORAGE_KEY_ROUTE);
+                    if (savedRouteId) {
+                        const route = routeConfig.find(function(r) {
+                            return r.id === savedRouteId;
+                        });
+                        if (route) {
+                            selectedRoute = route;
+                            iframeBaseUrl = route.url;
+                            return true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('无法读取localStorage:', e);
+                }
+                return false;
+            }
+            
+            // 保存选择的线路到localStorage
+            function saveSelectedRoute(route) {
+                try {
+                    if (route && route.id) {
+                        localStorage.setItem(STORAGE_KEY_ROUTE, route.id);
+                    }
+                } catch (e) {
+                    console.warn('无法保存到localStorage:', e);
+                }
+            }
+            
+            // 保存URL参数到localStorage
+            function saveUrlParams() {
+                try {
+                    const param = getQueryParam() || getCurrentHash();
+                    if (param) {
+                        localStorage.setItem(STORAGE_KEY_URL_PARAMS, param);
+                    } else {
+                        localStorage.removeItem(STORAGE_KEY_URL_PARAMS);
+                    }
+                } catch (e) {
+                    console.warn('无法保存URL参数到localStorage:', e);
+                }
+            }
+            
+            // 从localStorage恢复URL参数
+            function restoreUrlParams() {
+                try {
+                    const savedParams = localStorage.getItem(STORAGE_KEY_URL_PARAMS);
+                    if (savedParams) {
+                        // 如果当前URL没有参数，使用保存的参数
+                        const currentParam = getQueryParam() || getCurrentHash();
+                        if (!currentParam && savedParams) {
+                            // 如果是hash格式，直接设置hash
+                            if (savedParams.startsWith('#')) {
+                                window.location.hash = savedParams;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('无法读取URL参数:', e);
+                }
+            }
+            
             // iframe基础URL（将根据选择的线路动态设置）
-            // 默认使用第一个线路的URL
+            // 默认使用第一个线路的URL，但如果localStorage中有保存，则使用保存的
             let iframeBaseUrl = routeConfig.length > 0 ? routeConfig[0].url : '';
+            
+            // 尝试恢复之前选择的线路
+            const hasSavedRoute = restoreSelectedRoute();
+            if (hasSavedRoute) {
+                // 恢复URL参数
+                restoreUrlParams();
+            }
             
             // 获取当前使用的URL（用于更新链接等）
             function getCurrentUrl() {
@@ -1730,14 +1841,96 @@
                 return routeConfig[0];
             }
             
+            // 创建线路项元素
+            function createRouteItem(route, fastestRoute) {
+                const latency = routeLatencies[route.id];
+                const routeItem = document.createElement('div');
+                routeItem.className = 'route-item';
+                routeItem.dataset.routeId = route.id;
+                
+                if (selectedRoute && selectedRoute.id === route.id) {
+                    routeItem.classList.add('selected');
+                }
+                
+                if (latency && latency.status === 'testing') {
+                    routeItem.classList.add('testing');
+                }
+                
+                if (latency && latency.status === 'error') {
+                    routeItem.classList.add('error');
+                }
+                
+                let latencyHtml = '';
+                if (latency) {
+                    if (latency.status === 'testing') {
+                        latencyHtml = '<span class="route-latency testing">检测中...</span>';
+                    } else if (latency.status === 'error') {
+                        latencyHtml = '<span class="route-latency error">连接失败</span>';
+                    } else if (latency.latency !== null) {
+                        const latencyClass = latency.latency < 500 ? 'fast' : (latency.latency < 1500 ? 'medium' : 'slow');
+                        latencyHtml = '<span class="route-latency ' + latencyClass + '">' + latency.latency + 'ms</span>';
+                    } else {
+                        latencyHtml = '<span class="route-latency">未知</span>';
+                    }
+                } else {
+                    latencyHtml = '<span class="route-latency testing">等待检测...</span>';
+                }
+                
+                let badgeHtml = '';
+                if (fastestRoute && route.id === fastestRoute.id && latency && latency.status === 'success') {
+                    badgeHtml = '<span class="route-badge fastest">最快</span>';
+                }
+                
+                routeItem.innerHTML = '<div class="route-info">' +
+                    '<div class="route-name">' + route.name + badgeHtml + '</div>' +
+                    '</div>' +
+                    '<div class="route-status">' + latencyHtml + '</div>';
+                
+                routeItem.addEventListener('click', function() {
+                    if (latency && latency.status === 'testing') return;
+                    if (latency && latency.status === 'error') return; // 连接失败的线路不能选择
+                    
+                    // 直接选择并进入该线路
+                    selectedRoute = route;
+                    confirmRouteSelection();
+                });
+                
+                return routeItem;
+            }
+            
             // 渲染线路列表
             function renderRouteList() {
-                if (!routeList) return;
+                const routeList = document.getElementById('routeList');
+                const lastSelectedRouteList = document.getElementById('lastSelectedRouteList');
+                const lastSelectedSection = document.getElementById('lastSelectedSection');
+                const otherRoutesSection = document.getElementById('otherRoutesSection');
                 
+                if (!routeList || !lastSelectedRouteList) return;
+                
+                // 清空列表
                 routeList.innerHTML = '';
+                lastSelectedRouteList.innerHTML = '';
                 
-                // 按延迟排序（成功的在前，按延迟升序）
-                const sortedRoutes = routeConfig.slice().sort(function(a, b) {
+                // 获取上次选择的线路ID
+                let lastSelectedRouteId = null;
+                try {
+                    lastSelectedRouteId = localStorage.getItem(STORAGE_KEY_ROUTE);
+                } catch (e) {
+                    // 忽略错误
+                }
+                
+                // 找到上次选择的线路
+                const lastSelectedRoute = lastSelectedRouteId ? routeConfig.find(function(r) {
+                    return r.id === lastSelectedRouteId;
+                }) : null;
+                
+                // 分离线路：上次选择的和其他的
+                const otherRoutes = routeConfig.filter(function(route) {
+                    return !lastSelectedRoute || route.id !== lastSelectedRoute.id;
+                });
+                
+                // 按延迟排序其他线路（成功的在前，按延迟升序）
+                const sortedOtherRoutes = otherRoutes.slice().sort(function(a, b) {
                     const latencyA = routeLatencies[a.id];
                     const latencyB = routeLatencies[b.id];
                     
@@ -1747,66 +1940,25 @@
                     return (latencyA.latency || 9999) - (latencyB.latency || 9999);
                 });
                 
-                const fastestRoute = sortedRoutes.find(function(route) {
+                // 找到最快的线路（在所有线路中）
+                const allRoutes = lastSelectedRoute ? [lastSelectedRoute, ...otherRoutes] : otherRoutes;
+                const fastestRoute = allRoutes.find(function(route) {
                     const latency = routeLatencies[route.id];
                     return latency && latency.status === 'success' && latency.latency !== null;
                 });
                 
-                sortedRoutes.forEach(function(route) {
-                    const latency = routeLatencies[route.id];
-                    const routeItem = document.createElement('div');
-                    routeItem.className = 'route-item';
-                    routeItem.dataset.routeId = route.id;
-                    
-                    if (selectedRoute && selectedRoute.id === route.id) {
-                        routeItem.classList.add('selected');
-                    }
-                    
-                    if (latency && latency.status === 'testing') {
-                        routeItem.classList.add('testing');
-                    }
-                    
-                    if (latency && latency.status === 'error') {
-                        routeItem.classList.add('error');
-                    }
-                    
-                    let latencyHtml = '';
-                    if (latency) {
-                        if (latency.status === 'testing') {
-                            latencyHtml = '<span class="route-latency testing">检测中...</span>';
-                        } else if (latency.status === 'error') {
-                            latencyHtml = '<span class="route-latency error">连接失败</span>';
-                        } else if (latency.latency !== null) {
-                            const latencyClass = latency.latency < 500 ? 'fast' : (latency.latency < 1500 ? 'medium' : 'slow');
-                            latencyHtml = '<span class="route-latency ' + latencyClass + '">' + latency.latency + 'ms</span>';
-                        } else {
-                            latencyHtml = '<span class="route-latency">未知</span>';
-                        }
-                    } else {
-                        latencyHtml = '<span class="route-latency testing">等待检测...</span>';
-                    }
-                    
-                    let badgeHtml = '';
-                    if (fastestRoute && route.id === fastestRoute.id && latency && latency.status === 'success') {
-                        badgeHtml = '<span class="route-badge fastest">最快</span>';
-                    }
-                    
-                    routeItem.innerHTML = '<div class="route-info">' +
-                        '<div class="route-name">' + route.name + badgeHtml + '</div>' +
-                        '<div class="route-url">' + route.url + '</div>' +
-                        '</div>' +
-                        '<div class="route-status">' + latencyHtml + '</div>';
-                    
-                    routeItem.addEventListener('click', function() {
-                        if (latency && latency.status === 'testing') return;
-                        if (latency && latency.status === 'error') return; // 连接失败的线路不能选择
-                        
-                        // 直接选择并进入该线路
-                        selectedRoute = route;
-                        confirmRouteSelection();
-                    });
-                    
-                    routeList.appendChild(routeItem);
+                // 渲染上次选择的线路（如果有）
+                if (lastSelectedRoute) {
+                    lastSelectedSection.style.display = 'block';
+                    const routeItem = createRouteItem(lastSelectedRoute, fastestRoute);
+                    lastSelectedRouteList.appendChild(routeItem);
+                } else {
+                    lastSelectedSection.style.display = 'none';
+                }
+                
+                // 渲染其他线路
+                sortedOtherRoutes.forEach(function(route) {
+                    routeList.appendChild(createRouteItem(route, fastestRoute));
                 });
             }
             
@@ -1818,6 +1970,10 @@
                 if (routeConfig.length === 1) {
                     selectedRoute = routeConfig[0];
                     iframeBaseUrl = selectedRoute.url;
+                    // 保存选择的线路
+                    saveSelectedRoute(selectedRoute);
+                    saveUrlParams();
+                    
                     if (iframeWrapper) {
                         iframeWrapper.style.display = '';
                     }
@@ -1875,6 +2031,13 @@
                 if (!selectedRoute) return;
                 
                 iframeBaseUrl = selectedRoute.url;
+                
+                // 保存选择的线路到localStorage
+                saveSelectedRoute(selectedRoute);
+                
+                // 保存URL参数
+                saveUrlParams();
+                
                 hideRouteSelector();
                 
                 // 更新所有链接
@@ -1900,6 +2063,32 @@
                 // 更新高度
                 setTimeout(updateIframeHeight, 100);
                 setTimeout(updateIframeHeight, 500);
+            }
+            
+            // 直接加载保存的线路（跳过选择界面）
+            function loadSavedRoute() {
+                if (!selectedRoute) return false;
+                
+                iframeBaseUrl = selectedRoute.url;
+                
+                // 更新所有链接
+                updateAllLinks();
+                
+                // 显示iframe容器
+                if (iframeWrapper) {
+                    iframeWrapper.style.display = '';
+                }
+                
+                // 设置iframe的src并开始加载
+                if (iframe) {
+                    updateIframeUrl();
+                }
+                
+                // 更新高度
+                setTimeout(updateIframeHeight, 100);
+                setTimeout(updateIframeHeight, 500);
+                
+                return true;
             }
             
             // 更新iframe的src和所有相关链接
@@ -2573,10 +2762,43 @@
                         if (securityCheck) {
                             securityCheck.style.display = 'none';
                         }
-                        // 自动显示线路选择界面
-                        showRouteSelector();
+                        
+                        // 检查是否有保存的线路，如果有则直接加载，否则显示选择界面
+                        if (hasSavedRoute && selectedRoute) {
+                            // 直接加载保存的线路，跳过选择界面
+                            loadSavedRoute();
+                        } else {
+                            // 显示线路选择界面
+                            showRouteSelector();
+                        }
                     }, 500);
                 }
+            }
+            
+            // 直接加载保存的线路（跳过选择界面）
+            function loadSavedRoute() {
+                if (!selectedRoute) return false;
+                
+                iframeBaseUrl = selectedRoute.url;
+                
+                // 更新所有链接
+                updateAllLinks();
+                
+                // 显示iframe容器
+                if (iframeWrapper) {
+                    iframeWrapper.style.display = '';
+                }
+                
+                // 设置iframe的src并开始加载
+                if (iframe) {
+                    updateIframeUrl();
+                }
+                
+                // 更新高度
+                setTimeout(updateIframeHeight, 100);
+                setTimeout(updateIframeHeight, 500);
+                
+                return true;
             }
             
             // 线路选择界面：点击线路直接进入（已移除按钮）
