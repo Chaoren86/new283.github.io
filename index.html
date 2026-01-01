@@ -212,11 +212,14 @@
             transform: translateX(calc(100% - 40px));
         }
         
-        /* 展开状态 */
+        /* 展开状态 - 竖的长方形 */
         .route-change-btn.expanded {
             transform: translateX(0);
-            border-radius: 25px;
-            padding: 10px 18px;
+            border-radius: 20px;
+            padding: 18px 10px;
+            flex-direction: column;
+            width: auto;
+            min-width: 50px;
         }
         
         .route-change-btn:active {
@@ -233,6 +236,9 @@
             opacity: 0.9;
             cursor: grabbing;
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.7);
+            /* 拖动时禁用transition，提升性能 */
+            transition: none !important;
+            will-change: transform, left, top;
         }
         
         /* "选"字图标 */
@@ -254,6 +260,13 @@
             white-space: nowrap;
         }
         
+        /* 展开状态下，内容竖向排列 */
+        .route-change-btn.expanded .btn-content {
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
         /* 折叠状态下隐藏完整内容，显示"选"字 */
         .route-change-btn.collapsed .btn-content {
             display: none;
@@ -266,6 +279,9 @@
         /* 展开状态下显示完整内容，隐藏"选"字 */
         .route-change-btn.expanded .btn-content {
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
         
         .route-change-btn.expanded .select-icon {
@@ -278,8 +294,20 @@
             flex-shrink: 0;
         }
         
+        /* 展开状态下图标稍大一些 */
+        .route-change-btn.expanded svg {
+            width: 20px;
+            height: 20px;
+        }
+        
         .route-change-btn span {
             white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        /* 展开状态下文字稍大一些 */
+        .route-change-btn.expanded span {
+            font-size: 13px;
         }
         
         .iframe-container {
@@ -2995,6 +3023,9 @@
                 let currentX = 0;
                 let currentY = 0;
                 let isExpanded = false;
+                let rafId = null;
+                let btnWidth = 0;
+                let btnHeight = 0;
                 
                 // 从localStorage恢复按钮位置和状态
                 const savedPosition = localStorage.getItem('routeChangeBtnPosition');
@@ -3046,6 +3077,10 @@
                     initialX = rect.left;
                     initialY = rect.top;
                     
+                    // 缓存按钮尺寸，避免拖动时重复计算
+                    btnWidth = routeChangeBtn.offsetWidth;
+                    btnHeight = routeChangeBtn.offsetHeight;
+                    
                     // 如果按钮是折叠状态，先展开
                     if (!isExpanded) {
                         expandButton();
@@ -3054,8 +3089,33 @@
                         return;
                     }
                     
+                    // 拖动时禁用transition
+                    routeChangeBtn.style.transition = 'none';
                     routeChangeBtn.classList.add('dragging');
                     e.preventDefault();
+                }
+                
+                // 使用requestAnimationFrame优化拖动性能
+                function updatePosition() {
+                    if (!routeChangeBtn.classList.contains('dragging')) {
+                        rafId = null;
+                        return;
+                    }
+                    
+                    // 限制在视口内
+                    const maxX = window.innerWidth - btnWidth;
+                    const maxY = window.innerHeight - btnHeight;
+                    
+                    currentX = Math.max(0, Math.min(currentX, maxX));
+                    currentY = Math.max(0, Math.min(currentY, maxY));
+                    
+                    // 直接使用left/top定位，更准确
+                    routeChangeBtn.style.left = currentX + 'px';
+                    routeChangeBtn.style.top = currentY + 'px';
+                    routeChangeBtn.style.right = 'auto';
+                    routeChangeBtn.style.bottom = 'auto';
+                    
+                    rafId = null;
                 }
                 
                 // 拖动中
@@ -3077,18 +3137,10 @@
                         currentX = initialX + deltaX;
                         currentY = initialY + deltaY;
                         
-                        // 限制在视口内
-                        const maxX = window.innerWidth - routeChangeBtn.offsetWidth;
-                        const maxY = window.innerHeight - routeChangeBtn.offsetHeight;
-                        
-                        currentX = Math.max(0, Math.min(currentX, maxX));
-                        currentY = Math.max(0, Math.min(currentY, maxY));
-                        
-                        // 移除right和bottom，使用left和top定位
-                        routeChangeBtn.style.left = currentX + 'px';
-                        routeChangeBtn.style.top = currentY + 'px';
-                        routeChangeBtn.style.right = 'auto';
-                        routeChangeBtn.style.bottom = 'auto';
+                        // 使用requestAnimationFrame优化性能
+                        if (!rafId) {
+                            rafId = requestAnimationFrame(updatePosition);
+                        }
                     }
                     
                     e.preventDefault();
@@ -3097,10 +3149,31 @@
                 // 结束拖动
                 function endDrag(e) {
                     if (routeChangeBtn.classList.contains('dragging')) {
+                        // 取消未完成的动画帧
+                        if (rafId) {
+                            cancelAnimationFrame(rafId);
+                            rafId = null;
+                        }
+                        
+                        // 应用最终位置（移除transform，使用left/top）
+                        if (isDragging) {
+                            const maxX = window.innerWidth - btnWidth;
+                            const maxY = window.innerHeight - btnHeight;
+                            currentX = Math.max(0, Math.min(currentX, maxX));
+                            currentY = Math.max(0, Math.min(currentY, maxY));
+                            
+                            routeChangeBtn.style.transform = 'none';
+                            routeChangeBtn.style.left = currentX + 'px';
+                            routeChangeBtn.style.top = currentY + 'px';
+                            routeChangeBtn.style.right = 'auto';
+                            routeChangeBtn.style.bottom = 'auto';
+                        }
+                        
+                        // 恢复transition
+                        routeChangeBtn.style.transition = '';
                         routeChangeBtn.classList.remove('dragging');
                         
                         // 保存位置到localStorage
-                        const rect = routeChangeBtn.getBoundingClientRect();
                         const position = {
                             top: routeChangeBtn.style.top,
                             left: routeChangeBtn.style.left,
