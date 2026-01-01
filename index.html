@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <!-- 微信和移动端优化 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -327,6 +327,9 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            /* 防止内容溢出导致横向滚动 */
+            max-width: 100%;
+            overflow-x: hidden;
         }
         
         iframe {
@@ -2611,11 +2614,14 @@
                     iframe.style.bottom = '0';
                     iframe.style.display = 'block';
                     
-                    // 确保滚动相关样式不被覆盖
+                    // 确保滚动相关样式不被覆盖，防止横向滚动
                     iframe.style.overflow = 'auto';
                     iframe.style.overflowX = 'hidden';
                     iframe.style.overflowY = 'auto';
                     iframe.style.webkitOverflowScrolling = 'touch';
+                    iframe.style.maxWidth = '100%';
+                    // 防止内容溢出
+                    iframe.style.boxSizing = 'border-box';
                     
                     // 确保点击位置准确 - 移除所有可能影响定位的样式
                     iframe.style.pointerEvents = 'auto';
@@ -2638,11 +2644,13 @@
                     const iframeContainer = document.querySelector('.iframe-container');
                     if (iframeContainer) {
                         iframeContainer.style.overflow = 'hidden';
+                        iframeContainer.style.overflowX = 'hidden';
                         iframeContainer.style.height = availableHeight + 'px';
                         iframeContainer.style.minHeight = availableHeight + 'px';
                         iframeContainer.style.maxHeight = availableHeight + 'px';
                         iframeContainer.style.position = 'relative';
                         iframeContainer.style.width = '100%';
+                        iframeContainer.style.maxWidth = '100%';
                         iframeContainer.style.transform = 'none';
                         iframeContainer.style.willChange = 'auto';
                         iframeContainer.style.margin = '0';
@@ -2693,11 +2701,42 @@
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', function() {
                     updateIframeHeight();
+                    // 防止输入框聚焦时自动缩放
+                    preventAutoZoom();
                 });
                 window.visualViewport.addEventListener('scroll', function() {
                     updateIframeHeight();
                 });
             }
+            
+            // 防止输入框聚焦时页面自动缩放（iOS Safari问题）
+            let lastViewportWidth = window.innerWidth;
+            let lastViewportHeight = window.innerHeight;
+            
+            function preventAutoZoom() {
+                // 检测视口是否因为输入框聚焦而改变
+                const currentWidth = window.innerWidth;
+                const currentHeight = window.innerHeight;
+                
+                // 如果视口大小突然改变（通常是自动缩放导致的），强制恢复
+                if (Math.abs(currentWidth - lastViewportWidth) > 10 || 
+                    Math.abs(currentHeight - lastViewportHeight) > 10) {
+                    // 强制恢复视口设置
+                    const viewport = document.querySelector('meta[name="viewport"]');
+                    if (viewport) {
+                        viewport.setAttribute('content', 
+                            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no');
+                    }
+                    // 更新iframe高度
+                    updateIframeHeight();
+                }
+                
+                lastViewportWidth = currentWidth;
+                lastViewportHeight = currentHeight;
+            }
+            
+            // 定期检查视口大小（防止自动缩放）
+            setInterval(preventAutoZoom, 500);
             
             // 微信浏览器特殊处理：监听orientationchange（屏幕旋转）
             if (isWeChat) {
