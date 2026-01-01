@@ -3377,6 +3377,38 @@
                         collapseButton();
                     }
                 }, true);
+                
+                // 监听iframe容器的点击（处理iframe内的点击）
+                const iframeContainer = document.querySelector('.iframe-container');
+                if (iframeContainer) {
+                    iframeContainer.addEventListener('click', function(e) {
+                        // 如果点击的是iframe容器区域，且按钮是展开状态
+                        if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                            collapseButton();
+                        }
+                    }, true);
+                }
+                
+                // 监听iframe wrapper的点击
+                if (iframeWrapper) {
+                    iframeWrapper.addEventListener('click', function(e) {
+                        if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                            collapseButton();
+                        }
+                    }, true);
+                }
+                
+                // 监听body的点击（作为备用，使用冒泡阶段）
+                document.body.addEventListener('click', function(e) {
+                    if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                        // 延迟一点，避免与按钮点击冲突
+                        setTimeout(function() {
+                            if (isExpanded && !routeChangeBtn.contains(e.target)) {
+                                collapseButton();
+                            }
+                        }, 50);
+                    }
+                }, false);
             }
             
             if (routeRefreshBtn) {
