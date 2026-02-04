@@ -2833,15 +2833,15 @@
             window.keyboardVisible = false;
             
             // 监听 iframe 内的输入框聚焦事件（通过 postMessage）
-            window.addEventListener('message', function(event) {
-                // 验证消息来源（可以根据实际情况调整）
-                if (event.data && event.data.type === 'input-focus') {
-                    // 输入框聚焦，准备键盘弹出
-                    setTimeout(function() {
-                        scrollToActiveInput();
-                    }, 100);
-                }
-            });
+            // window.addEventListener('message', function(event) {
+            //     // 验证消息来源（可以根据实际情况调整）
+            //     if (event.data && event.data.type === 'input-focus') {
+            //         // 输入框聚焦，准备键盘弹出
+            //         setTimeout(function() {
+            //             scrollToActiveInput();
+            //         }, 100);
+            //     }
+            // });
             
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', function() {
@@ -2849,33 +2849,33 @@
                     const heightDiff = lastVisualViewportHeight - currentHeight;
                     
                     // 检测键盘是否弹起（高度明显减小，通常减少超过150px）
-                    if (heightDiff > 150) {
-                        keyboardVisible = true;
-                        window.keyboardVisible = true;
-                        // 键盘弹起时，使用当前可视高度，并防止页面滚动
-                        handleKeyboardShow();
-                    } else if (heightDiff < -50) {
-                        // 键盘收起时
-                        keyboardVisible = false;
-                        window.keyboardVisible = false;
-                        handleKeyboardHide();
-                    }
+                    // if (heightDiff > 150) {
+                    //     keyboardVisible = true;
+                    //     window.keyboardVisible = true;
+                    //     // 键盘弹起时，使用当前可视高度，并防止页面滚动
+                    //     handleKeyboardShow();
+                    // } else if (heightDiff < -50) {
+                    //     // 键盘收起时
+                    //     keyboardVisible = false;
+                    //     window.keyboardVisible = false;
+                    //     handleKeyboardHide();
+                    // }
                     
                     lastVisualViewportHeight = currentHeight;
                     updateIframeHeight();
                     // 防止输入框聚焦时自动缩放
-                    preventAutoZoom();
+                    //preventAutoZoom();
                 });
                 
-                window.visualViewport.addEventListener('scroll', function() {
-                    // 键盘弹起时，允许visualViewport滚动，这样输入框可以保持在可视区域
-                    // 但防止外层页面滚动
-                    if (keyboardVisible) {
-                        // 只防止外层页面滚动，允许visualViewport滚动
-                        window.scrollTo(0, 0);
-                    }
-                    updateIframeHeight();
-                });
+                // window.visualViewport.addEventListener('scroll', function() {
+                //     // 键盘弹起时，允许visualViewport滚动，这样输入框可以保持在可视区域
+                //     // 但防止外层页面滚动
+                //     if (keyboardVisible) {
+                //         // 只防止外层页面滚动，允许visualViewport滚动
+                //         window.scrollTo(0, 0);
+                //     }
+                //     updateIframeHeight();
+                // });
             }
             
             // 处理键盘弹起
