@@ -1765,13 +1765,13 @@
                 {
                     id: 'route3',
                     name: '线路三',
-                    url: 'https://test.28pc.cyou/',  // 备用线路二URL
+                    url: 'https://gxmtt.com/',  // 备用线路二URL
                     description: '备用线路二'
                 },
                 {
                     id: 'route4',
                     name: '线路四',
-                    url: 'https://test.28pc.cyou/',  // 备用线路三URL
+                    url: 'httpsgxmtt.com/',  // 备用线路二URL
                     description: '备用线路三'
                 }
                 // 可以继续添加更多线路，例如：
@@ -2851,11 +2851,11 @@
             
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', function() {
-                    const currentHeight = window.visualViewport.height;
+                    const vv = window.visualViewport;
+                    const currentHeight = vv.height;
                     const heightDiff = lastVisualViewportHeight - currentHeight;
-                    
-                    // 检测键盘是否弹起（高度明显减小，通常减少超过150px），兼容页面让输入框显示在可视区域
-                    if (heightDiff > 150) {
+                    // 视口高度明显变小（如键盘弹起、地址栏展开）则贴合可视区域，去掉输入框下方空白
+                    if (heightDiff > 80) {
                         keyboardVisible = true;
                         window.keyboardVisible = true;
                         handleKeyboardShow();
@@ -2864,48 +2864,42 @@
                         window.keyboardVisible = false;
                         handleKeyboardHide();
                     }
-                    
+                    if (keyboardVisible) {
+                        applyVisualViewportRect();
+                    }
                     lastVisualViewportHeight = currentHeight;
                     updateIframeHeight();
                 });
-                
-                // window.visualViewport.addEventListener('scroll', function() {
-                //     // 键盘弹起时，允许visualViewport滚动，这样输入框可以保持在可视区域
-                //     // 但防止外层页面滚动
-                //     if (keyboardVisible) {
-                //         // 只防止外层页面滚动，允许visualViewport滚动
-                //         window.scrollTo(0, 0);
-                //     }
-                //     updateIframeHeight();
-                // });
+                window.visualViewport.addEventListener('scroll', function() {
+                    if (keyboardVisible) {
+                        applyVisualViewportRect();
+                    }
+                    updateIframeHeight();
+                });
             }
             
-            // 处理键盘弹起
-            function handleKeyboardShow() {
-                // 获取可视区域高度
-                const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-                
-                // 防止外层页面滚动，但允许iframe内容滚动
-                // 不设置负的 top 值，避免产生顶部空白
+            // 将页面严格贴合可视视口，去掉输入框下方大片空白
+            function applyVisualViewportRect() {
+                const vv = window.visualViewport;
+                if (!vv) return;
+                const top = Math.round(vv.offsetTop);
+                const height = Math.round(vv.height);
                 document.body.style.position = 'fixed';
-                document.body.style.top = '0';
+                document.body.style.top = top + 'px';
                 document.body.style.left = '0';
                 document.body.style.right = '0';
-                document.body.style.bottom = '0';
                 document.body.style.width = '100%';
-                document.body.style.height = viewportHeight + 'px';
+                document.body.style.height = height + 'px';
                 document.body.style.overflow = 'hidden';
                 document.body.style.overscrollBehavior = 'none';
                 document.body.style.overscrollBehaviorY = 'none';
-                
-                // 调整容器高度和位置，避免头部空白
                 const container = document.querySelector('.container');
                 if (container) {
-                    container.style.height = viewportHeight + 'px';
-                    container.style.maxHeight = viewportHeight + 'px';
-                    container.style.minHeight = viewportHeight + 'px';
+                    container.style.height = height + 'px';
+                    container.style.maxHeight = height + 'px';
+                    container.style.minHeight = height + 'px';
                     container.style.position = 'fixed';
-                    container.style.top = '0';
+                    container.style.top = top + 'px';
                     container.style.left = '0';
                     container.style.right = '0';
                     container.style.bottom = 'auto';
@@ -2913,13 +2907,16 @@
                     container.style.margin = '0';
                     container.style.padding = '0';
                 }
-                
-                // 调整html元素
-                document.documentElement.style.height = viewportHeight + 'px';
+                document.documentElement.style.height = height + 'px';
                 document.documentElement.style.overflow = 'hidden';
                 document.documentElement.style.position = 'relative';
                 document.documentElement.style.overscrollBehavior = 'none';
                 document.documentElement.style.overscrollBehaviorY = 'none';
+            }
+
+            // 处理键盘弹起
+            function handleKeyboardShow() {
+                applyVisualViewportRect();
                 
                 // 立即更新iframe高度，使其适应键盘弹起后的可视区域
                 updateIframeHeight();
@@ -3004,6 +3001,9 @@
                     container.style.left = '';
                     container.style.right = '';
                     container.style.bottom = '';
+                    container.style.height = '';
+                    container.style.minHeight = '';
+                    container.style.maxHeight = '';
                     container.style.transform = '';
                     container.style.margin = '';
                     container.style.padding = '';
