@@ -1497,8 +1497,7 @@
                     id="mainFrame"
                     title="第三方网站内容"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                    allowfullscreen
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-modals"
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-modals allow-downloads"
                     referrerpolicy="no-referrer-when-downgrade"
                     loading="lazy"
                     scrolling="yes"
@@ -1512,6 +1511,9 @@
     <script>
         (function() {
             'use strict';
+            
+            // file:// 下 iframe 会被浏览器拦截，必须用 HTTP 访问外壳
+            const isFileProtocol = window.location.protocol === 'file:';
             
             // 检测微信环境
             const isWeChat = /micromessenger/i.test(navigator.userAgent);
@@ -1753,25 +1755,32 @@
                 {
                     id: 'route1',
                     name: '线路一',
-                    url: 'https://test.28pc.cyou/',  // 主线路URL
+                    url: 'https://huozhongwang.com/',  // 主线路URL
                     description: '主线路'
                 },
+                // 本地联调：内层先 npm run dev，外壳用 npx serve -p 8080 打开 index.plain.html
+                // {
+                //     id: 'local',
+                //     name: '本地开发',
+                //     url: 'http://127.0.0.1:5173/',
+                //     description: '本地 H5'
+                // },
                 {
                     id: 'route2',
                     name: '线路二',
-                    url: 'https://283.xshop.mom/',  // 备用线路一URL
+                    url: 'https://prt68.com/',  // 备用线路一URL
                     description: '备用线路一'
                 },
                 {
                     id: 'route3',
                     name: '线路三',
-                    url: 'https://283.xshop.mom',  // 备用线路二URL
+                    url: 'https://wyh520.com',  // 备用线路二URL
                     description: '备用线路二'
                 },
                 {
                     id: 'route4',
                     name: '线路四',
-                    url: 'https://test.kxgj.one',  // 备用线路二URL
+                    url: 'https://weierjiaju.com',  // 备用线路二URL
                     description: '备用线路三'
                 }
                 // 可以继续添加更多线路，例如：
@@ -1850,6 +1859,43 @@
                 }
             }
             
+            /** 内层平台 APP 下载：在新标签页打开 APK / 下载链接 */
+            function openDownloadUrlInShell(url) {
+                if (!url || typeof url !== 'string') {
+                    return;
+                }
+                var downloadUrl = url.trim();
+                if (!downloadUrl) {
+                    return;
+                }
+                try {
+                    var opened = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+                    if (opened) {
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('window.open 下载链接失败:', e);
+                }
+                try {
+                    var link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    return;
+                } catch (e2) {
+                    console.warn('a 标签打开下载链接失败:', e2);
+                }
+                try {
+                    window.location.href = downloadUrl;
+                } catch (e3) {
+                    console.warn('location 跳转下载链接失败:', e3);
+                }
+            }
+            
             // 监听来自iframe的消息（接收用户登录信息和退出登录）
             window.addEventListener('message', function(event) {
                 // 安全检查：验证消息来源（生产环境建议验证event.origin）
@@ -1863,6 +1909,9 @@
                     console.log('收到用户退出登录消息');
                     // 清除用户信息
                     clearUserInfo();
+                } else if (event.data && event.data.type === 'OPEN_DOWNLOAD_URL' && event.data.url) {
+                    console.log('收到 APP 下载请求:', event.data.url);
+                    openDownloadUrlInShell(event.data.url);
                 }
             }, false);
             
@@ -2391,6 +2440,17 @@
             
             // 更新iframe的src和所有相关链接
             function updateIframeUrl() {
+                if (isFileProtocol) {
+                    console.error('[线路壳] 当前为 file:// 协议，浏览器禁止 iframe 加载。请用 HTTP 访问，例如：npx serve -p 8080');
+                    if (loading) {
+                        const loadingText = loading.querySelector('.loading-text');
+                        if (loadingText) {
+                            loadingText.textContent = '请用 HTTP 打开此外壳（勿双击 HTML）。本地：npx serve -p 8080';
+                        }
+                        loading.classList.remove('hidden');
+                    }
+                    return;
+                }
                 const newUrl = buildIframeUrl(getCurrentUrl());
                 if (iframe && newUrl) {
                     if (iframe.src !== newUrl) {
@@ -3788,6 +3848,9 @@
             window.getUserInfo = function() {
                 return userLoginInfo;
             };
+            
+            // 暴露给内层 iframe 同域调用（可选）
+            window.openDownloadUrl = openDownloadUrlInShell;
         })();
     </script>
 </body>
