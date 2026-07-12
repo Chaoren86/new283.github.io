@@ -700,13 +700,7 @@
         }
         
         .route-item.testing {
-            opacity: 0.7;
-            pointer-events: none;
-        }
-        
-        .route-item.error {
-            border-color: #d32f2f;
-            opacity: 0.6;
+            opacity: 0.85;
         }
         
         .route-info {
@@ -1753,25 +1747,25 @@
                 {
                     id: 'route1',
                     name: '线路一',
-                    url: 'https://test.28pc.cyou/',  // 主线路URL
+                    url: 'https://test.ok28.cyou/',  // 主线路URL
                     description: '主线路'
                 },
                 {
                     id: 'route2',
                     name: '线路二',
-                    url: 'https://283.xshop.mom/',  // 备用线路一URL
+                    url: 'https://test.28pc.xin/',  // 备用线路一URL
                     description: '备用线路一'
                 },
                 {
                     id: 'route3',
                     name: '线路三',
-                    url: 'https://283.xshop.mom',  // 备用线路二URL
+                    url: 'https://test.28pc.xin/',  // 备用线路二URL
                     description: '备用线路二'
                 },
                 {
                     id: 'route4',
                     name: '线路四',
-                    url: 'https://test.kxgj.one',  // 备用线路二URL
+                    url: 'https://test.28pc.xin/',  // 备用线路二URL
                     description: '备用线路三'
                 }
                 // 可以继续添加更多线路，例如：
@@ -2135,21 +2129,16 @@
                     routeItem.classList.add('testing');
                 }
                 
-                if (latency && latency.status === 'error') {
-                    routeItem.classList.add('error');
-                }
-                
                 let latencyHtml = '';
                 if (latency) {
                     if (latency.status === 'testing') {
                         latencyHtml = '<span class="route-latency testing">检测中...</span>';
-                    } else if (latency.status === 'error') {
-                        latencyHtml = '<span class="route-latency error">连接失败</span>';
-                    } else if (latency.latency !== null) {
+                    } else if (latency.status === 'success' && latency.latency !== null) {
                         const latencyClass = latency.latency < 500 ? 'fast' : (latency.latency < 1500 ? 'medium' : 'slow');
                         latencyHtml = '<span class="route-latency ' + latencyClass + '">' + latency.latency + 'ms</span>';
                     } else {
-                        latencyHtml = '<span class="route-latency">未知</span>';
+                        // 检测无法测得延迟时，不显示“连接失败”，统一显示为可用
+                        latencyHtml = '<span class="route-latency">可用</span>';
                     }
                 } else {
                     latencyHtml = '<span class="route-latency testing">等待检测...</span>';
@@ -2166,10 +2155,7 @@
                     '<div class="route-status">' + latencyHtml + '</div>';
                 
                 routeItem.addEventListener('click', function() {
-                    if (latency && latency.status === 'testing') return;
-                    if (latency && latency.status === 'error') return; // 连接失败的线路不能选择
-                    
-                    // 直接选择并进入该线路
+                    // 不管检测结果如何，点击任意线路都直接进入对应URL
                     selectedRoute = route;
                     confirmRouteSelection();
                 });
