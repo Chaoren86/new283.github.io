@@ -601,6 +601,94 @@
             display: none;
         }
         
+        /* 加载过慢：挪到底部，不挡住页面中间 */
+        .loading.slow {
+            top: auto;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+            transform: translateX(-50%);
+            padding: 14px 16px;
+            width: calc(100% - 32px);
+            max-width: 360px;
+        }
+        
+        .loading .slow-text {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 12px;
+        }
+        
+        .loading .slow-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .loading .slow-btn {
+            flex: 1;
+            padding: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            background: #f0f0f3;
+            color: #555;
+            cursor: pointer;
+        }
+        
+        .loading .slow-btn.primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+        
+        .route-toast {
+            position: fixed;
+            top: calc(env(safe-area-inset-top, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10002;
+            max-width: calc(100% - 32px);
+            padding: 10px 16px;
+            border-radius: 10px;
+            background: rgba(30, 30, 40, 0.88);
+            color: #fff;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .route-toast.show {
+            opacity: 1;
+        }
+        
+        /* 电脑端：平台的 rpx 编译成了 vw，满屏宽度下会被等比放大变形，改为装进 390×844 的手机框 */
+        html.pc-shell body {
+            background: radial-gradient(120% 90% at 50% -10%, #1c2350 0%, #0b0f24 62%) #0b0f24;
+        }
+        
+        html.pc-shell .container {
+            background: transparent;
+        }
+        
+        html.pc-shell .iframe-wrapper {
+            align-items: center;
+            justify-content: center;
+        }
+        
+        html.pc-shell .iframe-container {
+            flex: none;
+            width: 390px;
+            height: 844px;
+            min-height: 0;
+            border-radius: 36px;
+            box-shadow:
+                0 0 0 11px #262d52,
+                0 0 0 12px rgba(255, 255, 255, 0.08),
+                0 48px 90px -24px rgba(0, 0, 0, 0.8);
+            transform-origin: center center;
+        }
+        
         /* 线路选择界面 */
         .route-selector {
             position: fixed;
@@ -612,7 +700,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            /* 不用 justify-content:center：卡片高过屏幕（平板横屏）时顶部会被推出可视区且滚不回去，改由卡片 margin:auto 居中 */
+            justify-content: flex-start;
             z-index: 10000;
             padding: 20px;
             overflow-y: auto;
@@ -627,6 +716,8 @@
             background: white;
             border-radius: 20px;
             padding: 30px;
+            margin: auto 0;
+            flex-shrink: 0;
             max-width: 600px;
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -765,6 +856,11 @@
         .route-latency.error {
             background: #ffebee;
             color: #c62828;
+        }
+        
+        .route-latency.unstable {
+            background: #fff3e0;
+            color: #e65100;
         }
         
         .route-badge {
@@ -1494,7 +1590,6 @@
                     allowfullscreen
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-modals"
                     referrerpolicy="no-referrer-when-downgrade"
-                    loading="lazy"
                     scrolling="yes"
                     style="overflow: auto; -webkit-overflow-scrolling: touch;">
                     <p>您的浏览器不支持iframe。请<a href="#" target="_blank" rel="noopener noreferrer" id="fallbackLink">点击这里</a>在新窗口中打开。</p>
@@ -1502,6 +1597,8 @@
             </div>
         </div>
     </div>
+    
+    <div id="routeToast" class="route-toast" role="status"></div>
 
     <script>
         (function() {
@@ -1512,6 +1609,17 @@
             const isQQ = /mqqbrowser|qzone|qqbrowser/i.test(navigator.userAgent);
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            
+            // 平板（短边 ≥ 600）放开 X5 / UC 的竖屏锁定：平台在平板上会自己收成居中一列，横竖屏都能用。
+            // 手机仍锁竖屏，平台在手机横屏下没有做适配。判定与平台 tabletLayout.js 一致。
+            (function() {
+                const touch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
+                const s = window.screen || {};
+                if (!touch || Math.min(s.width || 0, s.height || 0) < 600) return;
+                document.querySelectorAll('meta[name="x5-orientation"], meta[name="screen-orientation"]').forEach(function(m) {
+                    m.parentNode.removeChild(m);
+                });
+            })();
             
             // 微信/QQ环境特殊处理：立即渲染页面内容，防止被识别为文件
             if (isWeChat || isQQ) {
@@ -1731,13 +1839,35 @@
             const routeRefreshBtn = document.getElementById('routeRefreshBtn');
             const routeChangeBtn = document.getElementById('routeChangeBtn');
             
+            // 判定规则与平台 index.html 跳 static/pc.html 保持一致；平台在 iframe 里不会自己跳，只能壳页来装
+            const isPcShell = (function() {
+                const ua = navigator.userAgent || '';
+                if (/Android|iPhone|iPad|iPod|Windows Phone|HarmonyOS|Mobile|BlackBerry|Opera Mini|IEMobile|MicroMessenger/i.test(ua)) return false;
+                if (navigator.maxTouchPoints > 1) return false;
+                return Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0) >= 1000;
+            })();
+            if (isPcShell) {
+                document.documentElement.classList.add('pc-shell');
+            }
+            const PC_PHONE_W = 390;
+            const PC_PHONE_H = 844;
+            const PC_BEZEL = 12;
+            
             // 变量初始化
             let loadTimeout;
             let hasLoaded = false;
             let errorDetected = false;
+            // 收到过 iframe 里平台发来的消息，说明页面确实跑起来了
+            let frameAlive = false;
+            // 当前这次加载已经下发过登录信息；应用每收到一次都会重拉用户信息，不要重复发
+            let userInfoSentToFrame = false;
             // iframe 的 load 要等平台里所有图片下载完才触发，常常比「能操作」晚很多，只能当兜底
-            const LOADING_FALLBACK_MS = 6000;
+            const LOADING_SLOW_MS = 8000;
+            const ROUTE_PROBE_TIMEOUT_MS = 5000;
+            const ROUTE_PROBE_REUSE_MS = 30000;
             const loadingDefaultHTML = loading ? loading.innerHTML : '';
+            const routeToast = document.getElementById('routeToast');
+            let routeToastTimer = null;
             
             // ============================================
             // 线路配置区域 - 在这里配置所有可用的线路
@@ -1748,25 +1878,25 @@
                 {
                     id: 'route1',
                     name: '线路一',
-                    url: 'https://test.28pc.buzz/',  // 主线路URL
+                    url: 'https://dfh.28pc.buzz/',  // 主线路URL
                     description: '主线路'
                 },
                 {
                     id: 'route2',
                     name: '线路二',
-                    url: 'https://test.28pc.mom/',  // 备用线路一URL
+                    url: 'https://dfh.28pc.mom/',  // 备用线路一URL
                     description: '备用线路一'
                 },
                 {
                     id: 'route3',
                     name: '线路三',
-                    url: 'https://test.28pc.mom/',  // 备用线路二URL
+                    url: 'https://28mail.shop/',  // 备用线路二URL
                     description: '备用线路二'
                 },
                 {
                     id: 'route4',
                     name: '线路四',
-                    url: 'https://test.28pc.mom/',  // 备用线路二URL
+                    url: 'https://28mail.shop/',  // 备用线路二URL
                     description: '备用线路三'
                 }
                 // 可以继续添加更多线路，例如：
@@ -1820,6 +1950,7 @@
             // 向iframe发送用户信息（切换站点时使用）
             function sendUserInfoToIframe() {
                 if (iframe && userLoginInfo) {
+                    userInfoSentToFrame = true;
                     try {
                         // 使用postMessage发送用户信息到iframe
                         iframe.contentWindow.postMessage({
@@ -1851,8 +1982,15 @@
                 // if (event.origin !== 'https://your-domain.com') return;
                 
                 // 平台脚本已经跑起来才会发消息（APP_READY / USER_LOGIN 等），不必再等 iframe load
-                if (iframe && event.source === iframe.contentWindow && !errorDetected) {
-                    hideLoading();
+                if (iframe && event.source === iframe.contentWindow) {
+                    frameAlive = true;
+                    if (!errorDetected) {
+                        hideLoading();
+                    }
+                    // 各线路是不同域名，登录态不共享；应用启动即回传，赶在它判定“未登录跳登录页”之前
+                    if (event.data && event.data.type === 'APP_READY') {
+                        sendUserInfoToIframe();
+                    }
                 }
                 
                 if (event.data && event.data.type === 'USER_LOGIN') {
@@ -1970,20 +2108,21 @@
             function buildIframeUrl(baseUrl) {
                 const url = baseUrl || getCurrentUrl();
                 if (!url) return '';
+                const base = url.replace(/\/+$/, '') + '/';
                 
                 // 优先使用查询参数（已转换为hash格式）
                 const queryParam = getQueryParam();
                 if (queryParam) {
-                    return url + '/' + queryParam;
+                    return base + queryParam;
                 }
                 
                 // 如果没有查询参数，使用hash参数
                 const hash = getCurrentHash();
                 if (hash) {
-                    return url + '/' + hash;
+                    return base + hash;
                 }
                 
-                return url;
+                return base;
             }
             
             // 更新所有链接的URL（当线路改变时调用）
@@ -2017,107 +2156,79 @@
             function testRouteLatency(route) {
                 return new Promise(function(resolve) {
                     const startTime = performance.now();
-                    const testUrl = route.url + '/favicon.ico?' + Date.now();
-                    
-                    // 使用Image对象测试（跨域友好）
-                    const img = new Image();
+                    const testUrl = route.url.replace(/\/+$/, '') + '/favicon.ico?' + Date.now();
                     let resolved = false;
+                    let timeout = null;
                     
-                    const timeout = setTimeout(function() {
-                        if (!resolved) {
-                            resolved = true;
-                            resolve({
-                                route: route,
-                                latency: null,
-                                error: 'timeout',
-                                status: 'error'
-                            });
-                        }
-                    }, 5000); // 5秒超时
-                    
-                    img.onload = function() {
-                        if (!resolved) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            const latency = Math.round(performance.now() - startTime);
-                            resolve({
-                                route: route,
-                                latency: latency,
-                                error: null,
-                                status: 'success'
-                            });
-                        }
-                    };
-                    
-                    img.onerror = function() {
-                        if (!resolved) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            // 即使加载失败，也记录时间（可能服务器不支持favicon，但能响应）
-                            const latency = Math.round(performance.now() - startTime);
-                            resolve({
-                                route: route,
-                                latency: latency < 5000 ? latency : null,
-                                error: latency < 5000 ? null : 'timeout',
-                                status: latency < 5000 ? 'success' : 'error'
-                            });
-                        }
-                    };
-                    
-                    // 尝试使用fetch API（更准确，但可能受CORS限制）
-                    if (typeof fetch !== 'undefined') {
-                        fetch(testUrl, {
-                            method: 'HEAD',
-                            mode: 'no-cors',
-                            cache: 'no-cache'
-                        }).then(function() {
-                            if (!resolved) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                const latency = Math.round(performance.now() - startTime);
-                                resolve({
-                                    route: route,
-                                    latency: latency,
-                                    error: null,
-                                    status: 'success'
-                                });
-                            }
-                        }).catch(function() {
-                            // fetch失败，继续使用img方式
+                    function finish(ok) {
+                        if (resolved) return;
+                        resolved = true;
+                        clearTimeout(timeout);
+                        resolve({
+                            route: route,
+                            latency: ok ? Math.round(performance.now() - startTime) : null,
+                            error: ok ? null : 'unreachable',
+                            status: ok ? 'success' : 'error'
                         });
                     }
                     
-                    img.src = testUrl;
+                    timeout = setTimeout(function() {
+                        finish(false);
+                    }, ROUTE_PROBE_TIMEOUT_MS);
+                    
+                    if (typeof fetch !== 'undefined') {
+                        // no-cors 下即使 404 也会 resolve；只有 DNS 被污染、连接被重置、证书异常等才会 reject。
+                        // 不能用 Image 的 onerror 判断，被墙的域名会瞬间 onerror，反而显示成“延迟很低”
+                        fetch(testUrl, {
+                            method: 'HEAD',
+                            mode: 'no-cors',
+                            cache: 'no-store'
+                        }).then(function() {
+                            finish(true);
+                        }, function() {
+                            finish(false);
+                        });
+                    } else {
+                        const img = new Image();
+                        img.onload = img.onerror = function() {
+                            finish(true);
+                        };
+                        img.src = testUrl;
+                    }
                 });
             }
             
+            // 正在进行的整轮检测，开屏检测和选线页共用，避免重复发请求
+            let routeProbePromise = null;
+            let routeProbeFinishedAt = 0;
+            
             // 检测所有线路的延迟
-            async function testAllRoutes() {
-                const promises = routeConfig.map(function(route) {
-                    return testRouteLatency(route);
-                });
-                
-                const results = await Promise.all(promises);
-                
-                // 存储延迟结果
-                results.forEach(function(result) {
-                    routeLatencies[result.route.id] = result;
-                });
-                
-                // 找到最快的线路
-                const successfulResults = results.filter(function(r) {
-                    return r.status === 'success' && r.latency !== null;
-                });
-                
-                if (successfulResults.length > 0) {
-                    successfulResults.sort(function(a, b) {
-                        return a.latency - b.latency;
-                    });
-                    return successfulResults[0].route;
+            function testAllRoutes() {
+                if (routeProbePromise) {
+                    return routeProbePromise;
                 }
-                
-                // 如果没有成功的，返回第一个
-                return routeConfig[0];
+                routeProbePromise = Promise.all(routeConfig.map(testRouteLatency)).then(function(results) {
+                    results.forEach(function(result) {
+                        routeLatencies[result.route.id] = result;
+                    });
+                    routeProbePromise = null;
+                    routeProbeFinishedAt = Date.now();
+                    return getFastestRoute();
+                });
+                return routeProbePromise;
+            }
+            
+            function getFastestRoute(excludeId) {
+                let fastest = null;
+                routeConfig.forEach(function(route) {
+                    if (route.id === excludeId) return;
+                    const result = routeLatencies[route.id];
+                    if (!result || result.status !== 'success' || result.latency === null) return;
+                    if (!fastest || result.latency < routeLatencies[fastest.id].latency) {
+                        fastest = route;
+                    }
+                });
+                return fastest;
             }
             
             // 创建线路项元素
@@ -2143,8 +2254,7 @@
                         const latencyClass = latency.latency < 500 ? 'fast' : (latency.latency < 1500 ? 'medium' : 'slow');
                         latencyHtml = '<span class="route-latency ' + latencyClass + '">' + latency.latency + 'ms</span>';
                     } else {
-                        // 检测无法测得延迟时，不显示“连接失败”，统一显示为可用
-                        latencyHtml = '<span class="route-latency">可用</span>';
+                        latencyHtml = '<span class="route-latency unstable">不稳定</span>';
                     }
                 } else {
                     latencyHtml = '<span class="route-latency testing">等待检测...</span>';
@@ -2211,12 +2321,7 @@
                     return (latencyA.latency || 9999) - (latencyB.latency || 9999);
                 });
                 
-                // 找到最快的线路（在所有线路中）
-                const allRoutes = lastSelectedRoute ? [lastSelectedRoute, ...otherRoutes] : otherRoutes;
-                const fastestRoute = allRoutes.find(function(route) {
-                    const latency = routeLatencies[route.id];
-                    return latency && latency.status === 'success' && latency.latency !== null;
-                });
+                const fastestRoute = getFastestRoute();
                 
                 // 渲染上次选择的线路（如果有）
                 if (lastSelectedRoute) {
@@ -2264,12 +2369,17 @@
                     routeChangeBtn.style.display = 'none';
                 }
                 selectedRoute = null;
+                
+                // 刚测过就直接用结果，不再让用户看一遍“检测中...”
+                const probeIsFresh = !routeProbePromise && routeProbeFinishedAt &&
+                    Date.now() - routeProbeFinishedAt < ROUTE_PROBE_REUSE_MS;
+                if (probeIsFresh) {
+                    selectedRoute = getFastestRoute();
+                    renderRouteList();
+                    return;
+                }
+                
                 routeLatencies = {};
-                
-                // 初始渲染
-                renderRouteList();
-                
-                // 开始检测延迟
                 routeConfig.forEach(function(route) {
                     routeLatencies[route.id] = {
                         route: route,
@@ -2299,6 +2409,52 @@
                 if (routeSelector) {
                     routeSelector.classList.add('hidden');
                 }
+            }
+            
+            function openRouteSelector() {
+                if (iframeWrapper) {
+                    iframeWrapper.style.display = 'none';
+                }
+                showRouteSelector();
+            }
+            
+            function showRouteToast(message) {
+                if (!routeToast) return;
+                routeToast.textContent = message;
+                routeToast.classList.add('show');
+                clearTimeout(routeToastTimer);
+                routeToastTimer = setTimeout(function() {
+                    routeToast.classList.remove('show');
+                }, 3500);
+            }
+            
+            // 安全检测动画期间先在遮罩下面加载上次的线路，不白等那 2~3 秒；
+            // 不能用 display:none 藏起来，uni-app 在 0 尺寸里启动会算错布局
+            function preloadSavedRoute() {
+                if (!selectedRoute || !iframe) return;
+                iframeBaseUrl = selectedRoute.url;
+                updateIframeUrl();
+                setTimeout(updateIframeHeight, 100);
+            }
+            
+            // 上次的线路测不通时，自动换到能通的最快线路，免得用户对着白屏
+            function fallbackIfStartupRouteDown(startupRouteId) {
+                if (!startupRouteId || frameAlive) return;
+                if (!selectedRoute || selectedRoute.id !== startupRouteId) return;
+                if (routeSelector && !routeSelector.classList.contains('hidden')) return;
+                
+                const startupResult = routeLatencies[startupRouteId];
+                if (!startupResult || startupResult.status === 'success') return;
+                
+                const fallbackRoute = getFastestRoute(startupRouteId);
+                if (!fallbackRoute) return;
+                
+                const failedName = selectedRoute.name;
+                selectedRoute = fallbackRoute;
+                iframeBaseUrl = fallbackRoute.url;
+                saveSelectedRoute(fallbackRoute);
+                updateIframeUrl();
+                showRouteToast(failedName + '当前无法连接，已自动切换到' + fallbackRoute.name);
             }
             
             // 确认选择线路
@@ -2340,9 +2496,11 @@
                     }
                 }
                 
-                // 切换线路后，延迟发送用户信息到新的iframe
+                // 平台没发 APP_READY（老版本）时的兜底
                 setTimeout(function() {
-                    sendUserInfoToIframe();
+                    if (!userInfoSentToFrame) {
+                        sendUserInfoToIframe();
+                    }
                 }, 2000);
                 
                 // 更新高度
@@ -2426,18 +2584,33 @@
             function startFrameLoading() {
                 hasLoaded = false;
                 errorDetected = false;
+                frameAlive = false;
+                userInfoSentToFrame = false;
                 if (loadTimeout) {
                     clearTimeout(loadTimeout);
                 }
                 if (loading) {
                     loading.innerHTML = loadingDefaultHTML;
-                    loading.classList.remove('hidden');
+                    loading.classList.remove('hidden', 'slow');
                 }
                 loadTimeout = setTimeout(function() {
-                    if (!errorDetected) {
-                        hideLoading();
+                    loadTimeout = null;
+                    if (!hasLoaded && !errorDetected) {
+                        showSlowHint();
                     }
-                }, LOADING_FALLBACK_MS);
+                }, LOADING_SLOW_MS);
+            }
+            
+            // 超时后不再直接收起提示（那样只剩白屏），而是给出换线路的入口
+            function showSlowHint() {
+                if (!loading) return;
+                loading.innerHTML = '<div class="slow-text">当前线路加载较慢</div>' +
+                    '<div class="slow-actions">' +
+                    '<button type="button" class="slow-btn primary" data-action="switch">换一条线路</button>' +
+                    '<button type="button" class="slow-btn" data-action="wait">继续等待</button>' +
+                    '</div>';
+                loading.classList.add('slow');
+                loading.classList.remove('hidden');
             }
             
             // 隐藏加载提示
@@ -2500,12 +2673,15 @@
                     // 更新高度，确保内容完整显示
                     updateIframeHeight();
                     
-                    // iframe加载完成后，发送用户信息（如果存在）
+                    // 平台没发 APP_READY（老版本）时的兜底
                     setTimeout(function() {
-                        sendUserInfoToIframe();
+                        if (!userInfoSentToFrame) {
+                            sendUserInfoToIframe();
+                        }
                     }, 1000);
                     
-                    if (!errorDetected) {
+                    // 连接超时后浏览器加载的错误页也会触发 load，已经提示过“较慢”的就不在这里收起，免得又回到白屏
+                    if (!errorDetected && !(loading && loading.classList.contains('slow'))) {
                         hideLoading();
                     }
                     setTimeout(updateIframeHeight, 800);
@@ -2551,7 +2727,13 @@
             }
             
             if (loading) {
-                loading.addEventListener('click', function() {
+                loading.addEventListener('click', function(e) {
+                    const action = e.target && e.target.getAttribute ? e.target.getAttribute('data-action') : null;
+                    if (action === 'switch') {
+                        hideLoading();
+                        openRouteSelector();
+                        return;
+                    }
                     if (!errorDetected) {
                         hideLoading();
                     }
@@ -2606,8 +2788,22 @@
                 return height || window.screen.height || 800; // 默认值
             }
             
+            // 手机框整体等比缩放，窗口矮时也能看到完整一屏
+            function fitPcShell() {
+                const iframeContainer = document.querySelector('.iframe-container');
+                if (!iframeContainer) return;
+                const scale = Math.max(0.45, Math.min(1,
+                    (window.innerHeight - 48) / (PC_PHONE_H + PC_BEZEL * 2),
+                    (window.innerWidth - 48) / (PC_PHONE_W + PC_BEZEL * 2)));
+                iframeContainer.style.transform = 'scale(' + scale + ')';
+            }
+            
             // 更新iframe高度
             function updateIframeHeight() {
+                if (isPcShell) {
+                    fitPcShell();
+                    return;
+                }
                 if (iframe && iframeWrapper) {
                     // 视觉视口已被占用（键盘等）时立即贴合，避免仅 iframe 变矮而 .container 仍按 100dvh 撑满导致底部白条
                     var vv0 = window.visualViewport;
@@ -2822,7 +3018,7 @@
                     setTimeout(iosSyncViewportShell, 100);
                     setTimeout(iosSyncViewportShell, 350);
                 }, true);
-            } else if (window.visualViewport) {
+            } else if (window.visualViewport && !isPcShell) {
                 window.visualViewport.addEventListener('resize', function() {
                     const vv = window.visualViewport;
                     const currentHeight = vv.height;
@@ -3651,10 +3847,16 @@
                 });
             }
             
-            // 初始状态：隐藏iframe，显示安全检测页面
-            if (iframeWrapper) {
+            // 初始状态：显示安全检测页面；有上次线路就在遮罩下面提前加载，同时开始测速
+            const startupRouteId = hasSavedRoute && selectedRoute ? selectedRoute.id : null;
+            if (startupRouteId) {
+                preloadSavedRoute();
+            } else if (iframeWrapper) {
                 iframeWrapper.style.display = 'none';
             }
+            testAllRoutes().then(function() {
+                fallbackIfStartupRouteDown(startupRouteId);
+            });
             
             // 确保安全检测页面在初始时显示并启动检测
             function initSecurityCheck() {
